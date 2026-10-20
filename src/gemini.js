@@ -74,7 +74,7 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
       const msg = data?.error?.message ?? `HTTP ${res.status}`;
       if ((res.status === 429 || res.status === 503 || res.status === 500) && attempt < MAX_RETRIES) {
         // A daily quota won't recover by waiting; per-minute limits and overloads will.
-        if (res.status === 429 && /per.?day|PerDay/i.test(msg)) throw new SketchError('Gemini’s free daily limit for this model is used up. It resets at midnight Pacific time.', { kind: 'rate' });
+        if (res.status === 429 && /per.?day|PerDay/i.test(msg + JSON.stringify(data?.error?.details ?? ''))) throw new SketchError('Gemini’s free daily limit for this model is used up. It resets at midnight Pacific time.', { kind: 'rate' });
         const wait = retryDelay(data, attempt);
         onWait(res.status === 429 ? `Gemini rate limit: waiting ${Math.round(wait)}s` : `Gemini busy: retrying in ${Math.round(wait)}s`);
         await sleep(wait * 1000, signal);
@@ -86,7 +86,7 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
       }
       if (res.status === 400 && /API key/i.test(msg)) throw new SketchError('Gemini rejected the API key. Check it in settings.', { kind: 'auth' });
       if (res.status === 401 || res.status === 403) throw new SketchError(`Gemini refused the key: ${msg}`, { kind: 'auth' });
-      if (res.status === 429) throw new SketchError(`Gemini quota exceeded for ${model}. Try a Flash model or wait.`, { kind: 'rate' });
+      if (res.status === 429) throw new SketchError(`Gemini’s rate limit for ${model} kept blocking requests. Wait a few minutes and try again.`, { kind: 'rate' });
       if (res.status === 404) throw new SketchError(`Gemini model “${model}” isn’t available to this key.`, { kind: 'input' });
       throw new SketchError(`Gemini error (${res.status}): ${msg}`, { kind: res.status === 400 ? 'input' : 'error' });
     }
@@ -110,5 +110,6 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
     }
   }
 
-  return { call, model, provider: 'gemini' };
+  // Free-tier per-minute limits are tight: one request at a time avoids most 429s.
+  return { call, model, provider: 'gemini', limits: { concurrency: 1 } };
 }

@@ -24,7 +24,7 @@ export const DEFAULTS = Object.freeze({
  * @param {object} [opts]
  */
 export async function sketch({ claude, clean, rasterize, source, focus = '', sourceNames = [], onEvent = () => {}, signal }, opts = {}) {
-  const o = { ...DEFAULTS, ...opts };
+  const o = { ...DEFAULTS, ...(claude.limits ?? {}), ...opts };
   const emit = (e) => onEvent(e);
 
   emit({ type: 'stage', stage: 'map' });
@@ -35,10 +35,12 @@ export async function sketch({ claude, clean, rasterize, source, focus = '', sou
   emit({ type: 'map', map });
 
   const ctx = { claude, clean, rasterize, source, signal, emit, o };
-  const [ideas, overview] = await Promise.all([
-    mapLimit(map.ideas, o.concurrency, (idea) => drawIdea(idea, ctx)),
-    o.overview ? drawOverview(map, ctx) : Promise.resolve(null),
-  ]);
+  const drawIdeas = () => mapLimit(map.ideas, o.concurrency, (idea) => drawIdea(idea, ctx));
+  const drawOver = () => (o.overview ? drawOverview(map, ctx) : Promise.resolve(null));
+  // One-at-a-time backends draw the overview last instead of alongside the ideas.
+  const [ideas, overview] = o.concurrency > 1
+    ? await Promise.all([drawIdeas(), drawOver()])
+    : [await drawIdeas(), await drawOver()];
 
   const deck = {
     id: `d${Date.now().toString(36)}`,

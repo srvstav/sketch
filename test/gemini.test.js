@@ -48,6 +48,13 @@ test('waits and retries on per-minute 429 and 503, using RetryInfo', async () =>
   assert.equal(waits[0], 8000);
 });
 
+test('daily quota named only in details also fails fast', async () => {
+  const { fetch } = stub(err(429, 'Quota exceeded.', [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }]));
+  const g = createGemini({ apiKey: 'AQ.k', fetch, sleep: noSleep });
+  await assert.rejects(g.call({ task: 't', schema: {} }), /daily limit/);
+  assert.deepEqual(g.limits, { concurrency: 1 });
+});
+
 test('daily quota fails fast with a clear message', async () => {
   const { fetch } = stub(err(429, 'Quota exceeded for metric: generate_content_free_tier_requests, limit: 250, GenerateRequestsPerDayPerProjectPerModel-FreeTier'));
   const g = createGemini({ apiKey: 'AQ.k', fetch, sleep: noSleep });
