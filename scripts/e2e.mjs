@@ -109,6 +109,13 @@ await step('10-recall-model-graded', async () => {
   await page.locator('.tally').waitFor();
 });
 
+// layout checker on a picture with known problems
+const issues = await page.evaluate(async () => {
+  const { findLayoutIssues } = await import('./src/render.js');
+  return findLayoutIssues('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800"><text x="100" y="100" font-size="28">Hidden</text><rect x="90" y="70" width="220" height="40" fill="#000"/><text x="400" y="300" font-size="28">Mitochondria</text><text x="420" y="305" font-size="28">Cytoplasm</text><rect x="600" y="600" width="200" height="60" fill="#FD3"/><text x="620" y="640" font-size="24">Fine</text></svg>');
+});
+if (issues.length !== 2) problems.push(`layout check found ${JSON.stringify(issues)}`);
+
 // same flow on a Gemini key
 const gemini = [];
 await page.route('https://generativelanguage.googleapis.com/**', async (route) => {

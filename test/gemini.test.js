@@ -49,14 +49,28 @@ test('waits and retries on per-minute 429 and 503, using RetryInfo', async () =>
 });
 
 test('daily quota named only in details also fails fast', async () => {
-  const { fetch } = stub(err(429, 'Quota exceeded.', [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }]));
+  const daily = () => err(429, 'Quota exceeded.', [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }]);
+  const { fetch } = stub(daily(), daily(), daily());
   const g = createGemini({ apiKey: 'AQ.k', fetch, sleep: noSleep });
   await assert.rejects(g.call({ task: 't', schema: {} }), /daily limit/);
   assert.deepEqual(g.limits, { concurrency: 1 });
 });
 
-test('daily quota fails fast with a clear message', async () => {
-  const { fetch } = stub(err(429, 'Quota exceeded for metric: generate_content_free_tier_requests, limit: 250, GenerateRequestsPerDayPerProjectPerModel-FreeTier'));
+test('daily quota switches to the next free model and stays there', async () => {
+  const daily = () => err(429, 'Quota exceeded for metric: GenerateRequestsPerDayPerProjectPerModel-FreeTier');
+  const { fetch, seen } = stub(daily(), ok({ a: 1 }), ok({ b: 2 }));
+  const notes = [];
+  const g = createGemini({ apiKey: 'AQ.k', fetch, sleep: noSleep, onWait: (m) => notes.push(m) });
+  assert.deepEqual(await g.call({ task: 't', schema: {} }), { a: 1 });
+  assert.deepEqual(await g.call({ task: 't', schema: {} }), { b: 2 });
+  assert.match(seen[1].url, /gemini-3\.5-flash-lite/);
+  assert.match(seen[2].url, /gemini-3\.5-flash-lite/, 'later calls keep using the fallback');
+  assert.equal(g.model, 'gemini-3.5-flash-lite');
+  assert.match(notes[0], /switching to gemini-3\.5-flash-lite/);
+});
+
+test('daily quota fails fast once every model is used up', async () => {
+  const { fetch } = stub(err(429, 'x PerDay'), err(429, 'x PerDay'),err(429, 'Quota exceeded for metric: generate_content_free_tier_requests, limit: 250, GenerateRequestsPerDayPerProjectPerModel-FreeTier'));
   const g = createGemini({ apiKey: 'AQ.k', fetch, sleep: noSleep });
   await assert.rejects(g.call({ task: 't', schema: {} }), /daily limit/);
 });

@@ -44,6 +44,7 @@ export const DRAWING_RULES = `SVG rules (strict):
 - First child: <rect width="1200" height="800" fill="#FBF7EE"/> (paper).
 - Palette: ink #1B1A17 for outlines and most text; meaning colours from #E4472B (vermilion), #2B6CB0 (blue), #2F855A (green), #D69E2E (ochre), #6B46C1 (violet). Use at most 4 meaning colours. Light fills may use the same colours with fill-opacity 0.15–0.3.
 - Text: font-family="Avenir Next, Helvetica Neue, Arial, sans-serif", font-size at least 18, labels 20–28, the title 34–40 at the top left. Text must never overlap other text or run outside the canvas. Use text-anchor and tspan line breaks to keep labels tidy.
+- Spacing: boxes, badges and labels must not touch or overlap each other; leave at least 12px between them. Draw a label after (on top of) the shape it sits on. Plan coordinates before drawing.
 - Mark every key-term label the student must recall with data-recall="true" on its <text> element: 3 to 8 of them, each a real term or fact from the material, never a decoration. Keep each one as a single <text> with plain text content (no nested tspans) so it can be hidden for recall practice.
 - Allowed elements only: svg, g, defs, rect, circle, ellipse, line, polyline, polygon, path, text, tspan, marker, linearGradient, radialGradient, stop, clipPath, pattern, use, title, desc.
 - Forbidden: script, foreignObject, image, style elements, external links, event attributes, CSS url() except url(#id).
@@ -191,11 +192,13 @@ ${DRAWING_RULES}`;
 }
 
 export function redrawTask(idea, previous, grade, round) {
-  const misses = grade.results
-    .map((r, i) => (r.correct ? null : `- Q${i + 1} "${idea.questions[i].q}": ${r.note}`))
+  const misses = [
+    ...grade.results.map((r, i) => (r.correct ? null : `- Q${i + 1} "${idea.questions[i].q}": ${r.note}`)),
+    ...(grade.issues ?? []).map((i) => `- Layout: ${i}`),
+  ]
     .filter(Boolean)
     .join('\n');
-  return `Round ${round}. A reader who saw only your last picture could not answer some questions. Improve the picture so they can. Keep the metaphor and everything that works; fix what's missing. Don't cram in paragraphs: add labels, parts of the metaphor, or arrows.
+  return `Round ${round}. Your last picture had problems: a reader who saw only the picture could not answer some questions, or labels collided. Fix them. Keep the metaphor and everything that works; fix what's missing. Don't cram in paragraphs: add labels, parts of the metaphor, or arrows.
 
 Idea: ${idea.title}
 Shape: ${idea.shape}

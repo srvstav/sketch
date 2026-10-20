@@ -7,7 +7,7 @@ import { pickBlanks, localGrade, recordResult } from './recall.js';
 import { RECALL_SCHEMA, recallTask } from './prompts.js';
 import { readFiles } from './files.js';
 import * as store from './store.js';
-import { svgUrl, rasterize, download, pngBlob } from './render.js';
+import { svgUrl, rasterize, download, pngBlob, findLayoutIssues } from './render.js';
 import { deckToHtml, deckToJson, deckFromJson, slug } from './export.js';
 
 const SDK_URL = 'https://esm.sh/@anthropic-ai/sdk@0.130.0';
@@ -236,7 +236,7 @@ async function start() {
       const text = {
         drawing: 'drawing…',
         checking: `quizzing the picture (round ${e.round})…`,
-        scored: `round ${e.round}: ${pct(e.score ?? 0)}`,
+        scored: `round ${e.round}: ${pct(e.score ?? 0)}${e.issues ? ` · ${e.issues} label clash${e.issues > 1 ? 'es' : ''}` : ''}`,
         redrawing: `redrawing (round ${e.round})…`,
         done: `${pct(e.score ?? 0)} on the picture-only quiz`,
         failed: `failed: ${e.error}`,
@@ -248,7 +248,7 @@ async function start() {
 
   try {
     const deck = await sketch(
-      { claude, clean, rasterize: (svg) => rasterize(svg), source, focus: state.focus.trim(), sourceNames: sources.map((x) => x.name), onEvent, signal: state.controller.signal },
+      { claude, clean, rasterize: (svg) => rasterize(svg), layout: (svg) => findLayoutIssues(svg), source, focus: state.focus.trim(), sourceNames: sources.map((x) => x.name), onEvent, signal: state.controller.signal },
       { maxIdeas: s.maxIdeas, maxRounds: s.maxRounds },
     );
     if (!deck.ideas.some((i) => i.svg)) throw new SketchError('No pictures came out. Try again or try a different model.');
@@ -338,7 +338,9 @@ function lookView(s) {
     h('summary', { text: `Check rounds: ${s.rounds.length}` }),
     h('ol', {}, s.rounds.map((r) => h('li', {},
       h('b', { text: `${Math.round(r.score * 100)}%` }), r.round === s.bestRound ? ' — kept' : '',
-      r.misses.length ? h('ul', {}, r.misses.map((m) => h('li', { class: 'miss', text: `${m.q} — ${m.note}` }))) : ' — all answered')))) : '';
+      r.misses.length || r.issues?.length
+        ? h('ul', {}, r.misses.map((m) => h('li', { class: 'miss', text: `${m.q} — ${m.note}` })), (r.issues ?? []).map((i) => h('li', { class: 'miss', text: `Layout: ${i}` })))
+        : ' — all answered')))) : '';
   return h('div', {},
     picture(s.svg, `${s.title}, drawn as a ${s.shape}. ${s.caption ?? ''}`),
     h('div', { class: 'notes' },

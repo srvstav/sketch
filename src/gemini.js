@@ -5,6 +5,8 @@ import { SketchError } from './llm.js';
 import { abortableSleep } from './wait.js';
 
 export const GEMINI_DEFAULT_MODEL = 'gemini-3.8-flash'; // free tier; Pro models had no free quota when tested
+// Free daily quotas are per model and small (~7 requests on 3.8 Flash when tested), so fall through these in order.
+export const GEMINI_FALLBACKS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_RETRIES = 6;
 const BLOCKED = new Set(['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'IMAGE_SAFETY', 'LANGUAGE']);
@@ -36,9 +38,12 @@ export function retryDelay(errBody, attempt) {
  * @param {(ms: number, signal?: AbortSignal) => Promise<void>} [opts.sleep]
  * @param {(msg: string) => void} [opts.onWait]  told when we back off for rate limits
  */
-export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = () => {}, fetch: fetchImpl = globalThis.fetch, sleep = abortableSleep, onWait = () => {} }) {
+export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, fallbacks = GEMINI_FALLBACKS, onUsage = () => {}, fetch: fetchImpl = globalThis.fetch, sleep = abortableSleep, onWait = () => {} }) {
   const key = String(apiKey ?? '').trim();
   if (!key || key.startsWith('sk-ant-')) throw new SketchError('That isn’t a Gemini API key.', { kind: 'auth' });
+
+  const chain = [model, ...fallbacks.filter((m) => m !== model)];
+  let current = 0; // index into chain; moves forward when a model's daily quota is gone, for all later calls too
 
   async function call({ source = [], content = [], task, schema, effort = 'medium', maxTokens = 32000, signal }) {
     const body = {
@@ -57,7 +62,7 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
     for (let attempt = 0; ; attempt++) {
       let res;
       try {
-        res = await fetchImpl(`${BASE}/${encodeURIComponent(model)}:generateContent`, {
+        res = await fetchImpl(`${BASE}/${encodeURIComponent(chain[current])}:generateContent`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
           body: JSON.stringify(body),
@@ -74,7 +79,15 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
       const msg = data?.error?.message ?? `HTTP ${res.status}`;
       if ((res.status === 429 || res.status === 503 || res.status === 500) && attempt < MAX_RETRIES) {
         // A daily quota won't recover by waiting; per-minute limits and overloads will.
-        if (res.status === 429 && /per.?day|PerDay/i.test(msg + JSON.stringify(data?.error?.details ?? ''))) throw new SketchError('Gemini’s free daily limit for this model is used up. It resets at midnight Pacific time.', { kind: 'rate' });
+        if (res.status === 429 && /per.?day|PerDay/i.test(msg + JSON.stringify(data?.error?.details ?? ''))) {
+          if (current + 1 < chain.length) {
+            onWait(`Daily limit reached on ${chain[current]}; switching to ${chain[current + 1]}`);
+            current++;
+            attempt = -1;
+            continue;
+          }
+          throw new SketchError('Gemini’s free daily limits are used up for every Flash model. They reset at midnight Pacific time.', { kind: 'rate' });
+        }
         const wait = retryDelay(data, attempt);
         onWait(res.status === 429 ? `Gemini rate limit: waiting ${Math.round(wait)}s` : `Gemini busy: retrying in ${Math.round(wait)}s`);
         await sleep(wait * 1000, signal);
@@ -86,8 +99,8 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
       }
       if (res.status === 400 && /API key/i.test(msg)) throw new SketchError('Gemini rejected the API key. Check it in settings.', { kind: 'auth' });
       if (res.status === 401 || res.status === 403) throw new SketchError(`Gemini refused the key: ${msg}`, { kind: 'auth' });
-      if (res.status === 429) throw new SketchError(`Gemini’s rate limit for ${model} kept blocking requests. Wait a few minutes and try again.`, { kind: 'rate' });
-      if (res.status === 404) throw new SketchError(`Gemini model “${model}” isn’t available to this key.`, { kind: 'input' });
+      if (res.status === 429) throw new SketchError(`Gemini’s rate limit for ${chain[current]} kept blocking requests. Wait a few minutes and try again.`, { kind: 'rate' });
+      if (res.status === 404) throw new SketchError(`Gemini model “${chain[current]}” isn’t available to this key.`, { kind: 'input' });
       throw new SketchError(`Gemini error (${res.status}): ${msg}`, { kind: res.status === 400 ? 'input' : 'error' });
     }
 
@@ -111,5 +124,5 @@ export function createGemini({ apiKey, model = GEMINI_DEFAULT_MODEL, onUsage = (
   }
 
   // Free-tier per-minute limits are tight: one request at a time avoids most 429s.
-  return { call, model, provider: 'gemini', limits: { concurrency: 1 } };
+  return { call, get model() { return chain[current]; }, provider: 'gemini', limits: { concurrency: 1 } };
 }

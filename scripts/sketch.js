@@ -11,6 +11,7 @@ import { createModel, modelFor } from '../src/model.js';
 import { sketch, DEFAULTS } from '../src/pipeline.js';
 import { cleanSvg } from '../src/svg.js';
 import { deckToJson, deckToHtml, slug } from '../src/export.js';
+import { findLayoutIssues } from '../src/render.js';
 
 const { values: args, positionals: files } = parseArgs({
   allowPositionals: true,
@@ -48,13 +49,13 @@ const t0 = Date.now();
 const log = (e) => {
   const s = ((Date.now() - t0) / 1000).toFixed(0).padStart(4);
   if (e.type === 'map') console.log(`${s}s  map: "${e.map.title}" — ${e.map.ideas.map((i) => `${i.title} (${i.shape})`).join(', ')}`);
-  else if (e.type === 'idea' && ['scored', 'done', 'failed'].includes(e.status)) console.log(`${s}s  ${e.id} ${e.status}${e.round ? ` r${e.round}` : ''}${e.score != null ? ` ${Math.round(e.score * 100)}%` : ''}${e.error ? ` ${e.error}` : ''}`);
+  else if (e.type === 'idea' && ['scored', 'done', 'failed'].includes(e.status)) console.log(`${s}s  ${e.id} ${e.status}${e.round ? ` r${e.round}` : ''}${e.score != null ? ` ${Math.round(e.score * 100)}%` : ''}${e.issues ? ` · ${e.issues} layout issue(s)` : ''}${e.error ? ` ${e.error}` : ''}`);
   else if (e.type === 'overview' && e.status !== 'drawing') console.log(`${s}s  overview ${e.status}`);
 };
 
 try {
   const deck = await sketch(
-    { claude, clean: (s) => cleanSvg(s, { DOMParser }), rasterize, source: sourceBlocks(sources), focus: args.focus, sourceNames: sources.map((s) => s.name), onEvent: log },
+    { claude, clean: (s) => cleanSvg(s, { DOMParser }), rasterize, layout: async (svg) => { await page.setContent('<body></body>'); return page.evaluate(findLayoutIssues, svg); }, source: sourceBlocks(sources), focus: args.focus, sourceNames: sources.map((s) => s.name), onEvent: log },
     { maxRounds: Number(args.rounds ?? DEFAULTS.maxRounds), maxIdeas: Number(args.ideas ?? DEFAULTS.maxIdeas) },
   );
   const out = args.out ?? join('runs', `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}-${slug(deck.title)}`);
@@ -66,7 +67,7 @@ try {
   const scores = {
     model, seconds: Math.round((Date.now() - t0) / 1000), usage,
     mean: deck.ideas.reduce((n, i) => n + i.score, 0) / deck.ideas.length,
-    ideas: deck.ideas.map((i) => ({ id: i.id, title: i.title, shape: i.shape, score: i.score, rounds: i.rounds.map((r) => r.score), recallLabels: i.recall.length, error: i.error })),
+    ideas: deck.ideas.map((i) => ({ id: i.id, title: i.title, shape: i.shape, score: i.score, rounds: i.rounds.map((r) => r.score), layoutIssues: i.rounds.map((r) => r.issues ?? []), recallLabels: i.recall.length, error: i.error })),
   };
   await writeFile(join(out, 'scores.json'), JSON.stringify(scores, null, 2));
   console.log(`\nmean picture-only score ${Math.round(scores.mean * 100)}% · ${scores.seconds}s · tokens in ${usage.input} (+${usage.cached} cached, ${usage.written} cache-written) out ${usage.output}\n→ ${out}`);

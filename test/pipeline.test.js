@@ -63,6 +63,18 @@ test('runs map → draw → check → redraw and keeps the best round', async ()
   assert.equal(events.at(-1).type, 'done');
 });
 
+test('label clashes force a redraw even when the quiz passes', async () => {
+  const claude = fakeClaude({ failFirst: false });
+  let checks = 0;
+  const layout = async () => (checks++ === 0 ? ['"A" overlaps "B"'] : []);
+  const deck = await sketch({ claude, clean, rasterize, layout, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'x' }]) }, { overview: false, concurrency: 1 });
+  const first = deck.ideas[0];
+  assert.equal(first.rounds.length, 2);
+  assert.deepEqual(first.rounds[0].issues, ['"A" overlaps "B"']);
+  assert.equal(first.bestRound, 2, 'clean round beats the clashing one at equal score');
+  assert.ok(claude.calls.some((c) => c.schema === DRAW_SCHEMA && c.task.includes('- Layout: "A" overlaps "B"')));
+});
+
 test('the judge never sees the source material', async () => {
   const claude = fakeClaude();
   await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'secret notes' }]) });

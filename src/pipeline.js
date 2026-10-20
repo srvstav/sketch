@@ -20,10 +20,11 @@ export const DEFAULTS = Object.freeze({
  * @param {{ call: Function, model?: string }} deps.claude
  * @param {(svg: string) => { svg: string, recall: string[] }} deps.clean
  * @param {(svg: string) => Promise<{ mediaType: string, data: string }>} deps.rasterize  SVG → base64 PNG
+ * @param {(svg: string) => Promise<string[]>} [deps.layout]  rendered-layout problems (overlapping or clipped labels)
  * @param {object[]} deps.source  blocks from sourceBlocks()
  * @param {object} [opts]
  */
-export async function sketch({ claude, clean, rasterize, source, focus = '', sourceNames = [], onEvent = () => {}, signal }, opts = {}) {
+export async function sketch({ claude, clean, rasterize, layout = async () => [], source, focus = '', sourceNames = [], onEvent = () => {}, signal }, opts = {}) {
   const o = { ...DEFAULTS, ...(claude.limits ?? {}), ...opts };
   const emit = (e) => onEvent(e);
 
@@ -34,7 +35,7 @@ export async function sketch({ claude, clean, rasterize, source, focus = '', sou
   );
   emit({ type: 'map', map });
 
-  const ctx = { claude, clean, rasterize, source, signal, emit, o };
+  const ctx = { claude, clean, rasterize, layout, source, signal, emit, o };
   const drawIdeas = () => mapLimit(map.ideas, o.concurrency, (idea) => drawIdea(idea, ctx));
   const drawOver = () => (o.overview ? drawOverview(map, ctx) : Promise.resolve(null));
   // One-at-a-time backends draw the overview last instead of alongside the ideas.
@@ -82,7 +83,7 @@ export function normalizeMap(raw, o = DEFAULTS) {
   return { title: String(raw.title || 'Untitled topic'), subject: String(raw.subject || ''), ideas, links };
 }
 
-async function drawIdea(idea, { claude, clean, rasterize, source, signal, emit, o }) {
+async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal, emit, o }) {
   const rounds = [];
   let best = null;
   try {
@@ -93,10 +94,14 @@ async function drawIdea(idea, { claude, clean, rasterize, source, signal, emit, 
       emit({ type: 'idea', id: idea.id, status: 'checking', round });
       const grade = await check(idea, pic, { claude, rasterize, source, signal });
       const score = grade.correct / Math.max(1, idea.questions.length);
-      rounds.push({ round, score, misses: grade.results.map((r, i) => (r.correct ? null : { q: idea.questions[i]?.q, note: r.note })).filter(Boolean), fix: grade.fix });
-      if (!best || score > best.score) best = { ...pic, score, round };
-      emit({ type: 'idea', id: idea.id, status: 'scored', round, score });
-      if (score >= o.passAt || round === o.maxRounds || idea.questions.length === 0) break;
+      const issues = await layout(pic.svg).catch(() => []); // a broken layout check never blocks a picture
+      rounds.push({ round, score, issues, misses: grade.results.map((r, i) => (r.correct ? null : { q: idea.questions[i]?.q, note: r.note })).filter(Boolean), fix: grade.fix });
+      // Best = highest quiz score; ties go to the cleaner layout.
+      if (!best || score > best.score || (score === best.score && issues.length < best.issues.length)) best = { ...pic, score, round, issues };
+      emit({ type: 'idea', id: idea.id, status: 'scored', round, score, issues: issues.length });
+      const passed = score >= o.passAt && issues.length === 0;
+      if (passed || round === o.maxRounds || (idea.questions.length === 0 && issues.length === 0)) break;
+      grade.issues = issues;
 
       emit({ type: 'idea', id: idea.id, status: 'redrawing', round: round + 1 });
       pic = await drawClean(claude, clean, source, redrawTask(idea, pic, grade, round + 1), signal);
