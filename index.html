@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://esm.sh; img-src 'self' data: blob:; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>sketch</title>
+  <meta name="description" content="Turns course material into labelled pictures, with recall practice.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Lexend:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231B1A17'/%3E%3Cpath d='M8 22 L16 8 L24 22' stroke='%23E4472B' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="bar">
+    <button class="wordmark" data-go="home" aria-label="sketch home">sketch<span>.</span></button>
+    <nav>
+      <span class="tokens" id="tokens" hidden></span>
+      <button class="ghost" id="open-settings">Key &amp; settings</button>
+    </nav>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <dialog id="settings">
+    <form method="dialog" class="settings">
+      <h2>API key</h2>
+      <p class="muted">Paste a key from any of these. Your key and notes are sent only to that provider.</p>
+      <ul class="muted">
+        <li>Google Gemini (free tier): <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a></li>
+        <li>Anthropic: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></li>
+        <li>OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com/api-keys</a></li>
+      </ul>
+      <label>API key
+        <input type="password" name="key" autocomplete="off" spellcheck="false" placeholder="Paste key">
+      </label>
+      <span class="provider" id="provider" hidden></span>
+      <label class="check"><input type="checkbox" name="remember"> Remember on this device</label>
+
+      <h2>Settings</h2>
+      <label>Model
+        <select name="model"></select>
+      </label>
+      <label>Ideas per deck, at most
+        <input type="number" name="maxIdeas" min="3" max="8" step="1">
+      </label>
+      <label>Redraw rounds, at most
+        <input type="number" name="maxRounds" min="1" max="4" step="1">
+      </label>
+      <div class="row">
+        <button value="cancel" class="ghost">Cancel</button>
+        <button value="save" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

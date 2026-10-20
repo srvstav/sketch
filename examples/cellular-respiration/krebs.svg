@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif">
+  <rect width="1200" height="800" fill="#FBF7EE"/>
+  <defs>
+    <marker id="big" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="30" markerHeight="30" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1B1A17"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1B1A17"/></marker>
+  </defs>
+  <text x="40" y="62" font-size="38" font-weight="700" fill="#1B1A17">The Krebs cycle: a carousel</text>
+  <text x="40" y="96" font-size="20" fill="#6A6458">Step 2 · turns twice for every glucose</text>
+
+  <!-- the tent: where -->
+  <rect x="830" y="40" width="330" height="92" rx="6" fill="#FFFFFF" stroke="#1B1A17" stroke-width="3"/>
+  <text x="995" y="72" font-size="18" text-anchor="middle" fill="#6A6458" letter-spacing="2">WHERE</text>
+  <text x="995" y="112" font-size="28" font-weight="700" text-anchor="middle" fill="#2B6CB0" data-recall="true">Mitochondrial matrix</text>
+
+  <!-- carousel track -->
+  <circle cx="600" cy="450" r="210" fill="#D69E2E" fill-opacity="0.12" stroke="#1B1A17" stroke-width="8"/>
+  <!-- clockwise arrows on the track -->
+  <path d="M810 450 A210 210 0 0 1 790 540" fill="none" stroke="#1B1A17" stroke-width="8" marker-end="url(#big)"/>
+  <path d="M600 660 A210 210 0 0 1 505 637" fill="none" stroke="#1B1A17" stroke-width="8" marker-end="url(#big)"/>
+  <path d="M390 450 A210 210 0 0 1 412 357" fill="none" stroke="#1B1A17" stroke-width="8" marker-end="url(#big)"/>
+  <!-- poles + hub -->
+  <g stroke="#1B1A17" stroke-width="3">
+    <line x1="600" y1="450" x2="452" y2="302"/><line x1="600" y1="450" x2="748" y2="302"/>
+    <line x1="600" y1="450" x2="748" y2="598"/><line x1="600" y1="450" x2="452" y2="598"/>
+  </g>
+  <circle cx="600" cy="450" r="78" fill="#D69E2E" stroke="#1B1A17" stroke-width="4"/>
+  <text x="600" y="446" font-size="34" font-weight="800" text-anchor="middle" fill="#1B1A17">× 2</text>
+  <text x="600" y="476" font-size="18" text-anchor="middle" fill="#1B1A17">per glucose</text>
+
+  <!-- seats -->
+  <circle cx="452" cy="302" r="34" fill="#2B6CB0" stroke="#1B1A17" stroke-width="3"/>
+  <text x="452" y="310" font-size="20" font-weight="700" text-anchor="middle" fill="#FFFFFF">4C</text>
+  <text x="404" y="262" font-size="27" font-weight="700" text-anchor="end" fill="#2B6CB0" data-recall="true">Oxaloacetate</text>
+  <text x="404" y="292" font-size="18" text-anchor="end" fill="#6A6458">waits on the ride, comes back every turn</text>
+
+  <circle cx="748" cy="302" r="40" fill="#6B46C1" stroke="#1B1A17" stroke-width="3"/>
+  <text x="748" y="310" font-size="20" font-weight="700" text-anchor="middle" fill="#FFFFFF">6C</text>
+  <text x="800" y="290" font-size="27" font-weight="700" fill="#6B46C1" data-recall="true">Citrate</text>
+  <text x="800" y="318" font-size="18" fill="#6A6458">2C + 4C = 6C</text>
+
+  <!-- acetyl-CoA climbs aboard at the top -->
+  <circle cx="600" cy="170" r="26" fill="#2F855A" stroke="#1B1A17" stroke-width="3"/>
+  <text x="600" y="177" font-size="18" font-weight="700" text-anchor="middle" fill="#FFFFFF">2C</text>
+  <path d="M630 182 C 690 200, 720 240, 735 268" fill="none" stroke="#2F855A" stroke-width="4" marker-end="url(#arr)"/>
+  <text x="560" y="160" font-size="28" font-weight="700" text-anchor="end" fill="#2F855A" data-recall="true">Acetyl-CoA</text>
+  <text x="560" y="190" font-size="18" text-anchor="end" fill="#6A6458">what's left of pyruvate climbs on</text>
+
+  <!-- CO2 balloons float away (the hook) -->
+  <g stroke="#1B1A17" stroke-width="2" fill="none">
+    <path d="M800 520 C 860 500, 880 470, 950 430"/>
+    <path d="M760 600 C 840 610, 900 560, 1010 500"/>
+  </g>
+  <g stroke="#1B1A17" stroke-width="3">
+    <ellipse cx="968" cy="404" rx="38" ry="44" fill="#9AA5B1"/>
+    <ellipse cx="1036" cy="468" rx="38" ry="44" fill="#B8C2CC"/>
+  </g>
+  <text x="968" y="412" font-size="20" font-weight="700" text-anchor="middle" fill="#1B1A17">CO₂</text>
+  <text x="1036" y="476" font-size="20" font-weight="700" text-anchor="middle" fill="#1B1A17">CO₂</text>
+  <text x="1020" y="560" font-size="26" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">2 CO₂ per turn</text>
+  <text x="1020" y="588" font-size="18" text-anchor="middle" fill="#6A6458">the carbons you breathe out</text>
+
+  <!-- prize bags per turn -->
+  <line x1="540" y1="650" x2="430" y2="690" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <line x1="600" y1="662" x2="600" y2="690" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <line x1="660" y1="650" x2="770" y2="690" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <rect x="330" y="696" width="180" height="76" rx="10" fill="#6B46C1" fill-opacity="0.18" stroke="#1B1A17" stroke-width="3"/>
+  <text x="420" y="744" font-size="28" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">3 NADH</text>
+  <rect x="520" y="696" width="160" height="76" rx="10" fill="#6B46C1" fill-opacity="0.18" stroke="#1B1A17" stroke-width="3"/>
+  <text x="600" y="744" font-size="28" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">1 FADH₂</text>
+  <rect x="690" y="696" width="160" height="76" rx="10" fill="#E4472B" fill-opacity="0.18" stroke="#1B1A17" stroke-width="3"/>
+  <text x="770" y="744" font-size="28" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">1 ATP</text>
+  <text x="60" y="728" font-size="20" font-weight="700" fill="#1B1A17">Prizes per turn</text>
+  <text x="60" y="756" font-size="18" fill="#6A6458">NADH + FADH₂ go on to step 3</text>
+</svg>

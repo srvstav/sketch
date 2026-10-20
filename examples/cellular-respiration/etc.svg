@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif">
+  <rect width="1200" height="800" fill="#FBF7EE"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1B1A17"/></marker>
+    <marker id="arrY" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#D69E2E"/></marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2B6CB0"/></marker>
+  </defs>
+  <text x="40" y="62" font-size="38" font-weight="700" fill="#1B1A17">Electron transport: the dam and the turbine</text>
+  <text x="40" y="96" font-size="20" fill="#6A6458">Step 3 · where most of the ATP is made</text>
+
+  <!-- upper reservoir: intermembrane space, crowded with H+ -->
+  <rect x="0" y="130" width="1200" height="230" fill="#2B6CB0" fill-opacity="0.10"/>
+  <text x="40" y="168" font-size="20" fill="#2B6CB0" font-weight="700">Space between the membranes: H⁺ piles up here like water behind a dam</text>
+  <g fill="#2B6CB0" fill-opacity="0.85">
+    <circle cx="120" cy="230" r="15"/><circle cx="170" cy="270" r="15"/><circle cx="230" cy="220" r="15"/><circle cx="300" cy="280" r="15"/>
+    <circle cx="350" cy="225" r="15"/><circle cx="420" cy="275" r="15"/><circle cx="540" cy="270" r="15"/>
+    <circle cx="600" cy="225" r="15"/><circle cx="720" cy="230" r="15"/>
+    <circle cx="850" cy="215" r="15"/><circle cx="1080" cy="230" r="15"/><circle cx="1140" cy="275" r="15"/>
+  </g>
+  <g font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">
+    <text x="120" y="235">H⁺</text><text x="170" y="275">H⁺</text><text x="230" y="225">H⁺</text><text x="300" y="285">H⁺</text>
+    <text x="350" y="230">H⁺</text><text x="420" y="280">H⁺</text><text x="540" y="275">H⁺</text>
+    <text x="600" y="230">H⁺</text><text x="720" y="235">H⁺</text>
+    <text x="850" y="220">H⁺</text><text x="1080" y="235">H⁺</text><text x="1140" y="280">H⁺</text>
+  </g>
+
+  <!-- membrane = the dam wall -->
+  <rect x="0" y="360" width="1200" height="70" fill="#D69E2E" fill-opacity="0.35" stroke="#1B1A17" stroke-width="3"/>
+  <text x="40" y="484" font-size="26" font-weight="700" fill="#1B1A17" data-recall="true">Inner mitochondrial membrane</text>
+
+  <!-- three pumps -->
+  <g fill="#6B46C1" fill-opacity="0.85" stroke="#1B1A17" stroke-width="3">
+    <rect x="460" y="330" width="90" height="130" rx="22"/>
+    <rect x="600" y="330" width="90" height="130" rx="22"/>
+    <rect x="740" y="330" width="90" height="130" rx="22"/>
+  </g>
+  <g font-size="22" font-weight="800" fill="#FFFFFF" text-anchor="middle">
+    <text x="505" y="402">I</text><text x="645" y="402">III</text><text x="785" y="402">IV</text>
+  </g>
+  <g stroke="#2B6CB0" stroke-width="5" marker-end="url(#arrB)">
+    <line x1="505" y1="325" x2="505" y2="290"/><line x1="645" y1="325" x2="645" y2="290"/><line x1="785" y1="325" x2="785" y2="290"/>
+  </g>
+  <text x="455" y="322" font-size="20" fill="#6B46C1" font-weight="700" text-anchor="end">pumps push H⁺ up →</text>
+
+  <!-- matrix below -->
+  <text x="40" y="770" font-size="20" fill="#6A6458">Matrix (inside the mitochondrion)</text>
+
+  <!-- electrons zig-zag through the pumps -->
+  <circle cx="110" cy="600" r="44" fill="#6B46C1" fill-opacity="0.2" stroke="#1B1A17" stroke-width="3"/>
+  <text x="110" y="596" font-size="18" font-weight="700" text-anchor="middle" fill="#1B1A17">NADH</text>
+  <text x="110" y="620" font-size="16" font-weight="700" text-anchor="middle" fill="#1B1A17">FADH₂</text>
+  <path d="M150 590 C 260 590, 440 560, 505 470 C 540 520, 610 520, 645 470 C 680 520, 750 520, 785 470 C 800 520, 805 535, 805 545" fill="none" stroke="#D69E2E" stroke-width="5" stroke-dasharray="2 12" stroke-linecap="round" marker-end="url(#arrY)"/>
+  <g fill="#D69E2E" stroke="#1B1A17" stroke-width="2">
+    <circle cx="330" cy="576" r="11"/><circle cx="575" cy="512" r="11"/><circle cx="715" cy="512" r="11"/>
+  </g>
+  <text x="230" y="640" font-size="26" font-weight="700" fill="#B7791F" data-recall="true">Electrons</text>
+  <text x="230" y="666" font-size="18" fill="#6A6458">handed down the line; each hop powers a pump</text>
+
+  <!-- oxygen the goalkeeper (the hook) -->
+  <circle cx="805" cy="610" r="50" fill="#E4472B" fill-opacity="0.85" stroke="#1B1A17" stroke-width="3"/>
+  <text x="805" y="620" font-size="28" font-weight="800" text-anchor="middle" fill="#FFFFFF">O₂</text>
+  <g stroke="#1B1A17" stroke-width="5" stroke-linecap="round">
+    <line x1="765" y1="585" x2="735" y2="560"/><line x1="845" y1="585" x2="875" y2="560"/>
+  </g>
+  <circle cx="731" cy="556" r="11" fill="#FFFFFF" stroke="#1B1A17" stroke-width="3"/>
+  <circle cx="879" cy="556" r="11" fill="#FFFFFF" stroke="#1B1A17" stroke-width="3"/>
+  <text x="805" y="694" font-size="26" font-weight="700" text-anchor="middle" fill="#E4472B" data-recall="true">Oxygen</text>
+  <text x="805" y="720" font-size="18" text-anchor="middle" fill="#6A6458">the goalkeeper: catches the last electrons</text>
+  <path d="M856 640 L900 676" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M905 700 C 895 678, 915 668, 920 653 C 925 668, 945 678, 935 700 A 15 15 0 0 1 905 700 Z" fill="#2B6CB0" fill-opacity="0.6" stroke="#1B1A17" stroke-width="2"/>
+  <text x="948" y="700" font-size="26" font-weight="700" fill="#2B6CB0" data-recall="true">Water</text>
+
+  <!-- ATP synthase turbine in the dam -->
+  <rect x="900" y="320" width="70" height="150" rx="10" fill="#2F855A" fill-opacity="0.9" stroke="#1B1A17" stroke-width="3"/>
+  <circle cx="935" cy="500" r="40" fill="#2F855A" fill-opacity="0.25" stroke="#1B1A17" stroke-width="3"/>
+  <g stroke="#1B1A17" stroke-width="4" stroke-linecap="round">
+    <line x1="935" y1="470" x2="935" y2="530"/><line x1="905" y1="500" x2="965" y2="500"/>
+    <line x1="914" y1="479" x2="956" y2="521"/><line x1="956" y1="479" x2="914" y2="521"/>
+  </g>
+  <path d="M935 200 L935 312" stroke="#2B6CB0" stroke-width="10" marker-end="url(#arrB)"/>
+  <text x="955" y="196" font-size="18" text-anchor="start" fill="#2B6CB0" font-weight="700">H⁺ rush back down</text>
+  <text x="985" y="408" font-size="26" font-weight="700" fill="#2F855A" data-recall="true">ATP synthase</text>
+  <text x="985" y="456" font-size="18" fill="#6A6458">spins like a turbine</text>
+  <g fill="#D69E2E" stroke="#1B1A17" stroke-width="2">
+    <circle cx="1010" cy="560" r="16"/><circle cx="1046" cy="572" r="16"/><circle cx="1082" cy="560" r="16"/><circle cx="1028" cy="592" r="16"/><circle cx="1064" cy="592" r="16"/>
+  </g>
+  <text x="1046" y="640" font-size="28" font-weight="800" text-anchor="middle" fill="#1B1A17" data-recall="true">~28 ATP</text>
+</svg>

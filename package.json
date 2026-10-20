@@ -1,0 +1,23 @@
+{
+  "name": "sketch",
+  "version": "0.1.0",
+  "description": "Turn course material into pictures you cannot forget, checked by a picture-only quiz.",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "serve": "python3 -m http.server 8080",
+    "sketch": "node scripts/sketch.js"
+  },
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.130.0",
+    "linkedom": "^0.18.13",
+    "playwright": "^1.64.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

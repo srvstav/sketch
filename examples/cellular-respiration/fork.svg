@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif">
+  <rect width="1200" height="800" fill="#FBF7EE"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1B1A17"/></marker>
+  </defs>
+  <text x="40" y="62" font-size="38" font-weight="700" fill="#1B1A17">With or without oxygen: the fork in the road</text>
+  <text x="40" y="96" font-size="20" fill="#6A6458">What happens to pyruvate after glycolysis</text>
+
+  <!-- roads -->
+  <path d="M0 470 L380 470 C 520 470, 560 300, 720 260 L1200 240" fill="none" stroke="#1B1A17" stroke-width="64" stroke-linejoin="round" opacity="0.14"/>
+  <path d="M380 470 C 520 470, 560 620, 700 640 L1200 650" fill="none" stroke="#1B1A17" stroke-width="64" opacity="0.14"/>
+  <path d="M0 470 L380 470 C 520 470, 560 300, 720 260 L1200 240" fill="none" stroke="#FBF7EE" stroke-width="3" stroke-dasharray="18 14"/>
+  <path d="M380 470 C 520 470, 560 620, 700 640 L1200 650" fill="none" stroke="#FBF7EE" stroke-width="3" stroke-dasharray="18 14"/>
+
+  <!-- pyruvate car -->
+  <rect x="120" y="430" width="120" height="56" rx="14" fill="#2F855A" stroke="#1B1A17" stroke-width="3"/>
+  <circle cx="152" cy="490" r="13" fill="#1B1A17"/><circle cx="210" cy="490" r="13" fill="#1B1A17"/>
+  <text x="180" y="410" font-size="26" font-weight="700" text-anchor="middle" fill="#2F855A">Pyruvate</text>
+  <text x="180" y="540" font-size="18" text-anchor="middle" fill="#6A6458">fresh out of glycolysis (2 ATP so far)</text>
+
+  <!-- signpost -->
+  <line x1="420" y1="330" x2="420" y2="440" stroke="#1B1A17" stroke-width="6"/>
+  <rect x="300" y="270" width="250" height="66" rx="6" fill="#FFFFFF" stroke="#1B1A17" stroke-width="3"/>
+  <text x="425" y="296" font-size="17" text-anchor="middle" fill="#6A6458" letter-spacing="1">IS THERE ENOUGH</text>
+  <text x="425" y="325" font-size="26" font-weight="800" text-anchor="middle" fill="#E4472B" data-recall="true">Oxygen</text>
+
+  <!-- upper road: aerobic -->
+  <text x="630" y="232" font-size="22" font-weight="700" fill="#1B1A17">YES</text>
+  <text x="720" y="190" font-size="26" font-weight="700" fill="#2B6CB0">Aerobic: Krebs + electron transport</text>
+  <g fill="#D69E2E" stroke="#1B1A17" stroke-width="2">
+    <circle cx="880" cy="320" r="16"/><circle cx="916" cy="320" r="16"/><circle cx="952" cy="320" r="16"/><circle cx="988" cy="320" r="16"/><circle cx="1024" cy="320" r="16"/><circle cx="1060" cy="320" r="16"/>
+    <circle cx="898" cy="350" r="16"/><circle cx="934" cy="350" r="16"/><circle cx="970" cy="350" r="16"/><circle cx="1006" cy="350" r="16"/><circle cx="1042" cy="350" r="16"/>
+    <circle cx="916" cy="380" r="16"/><circle cx="952" cy="380" r="16"/><circle cx="988" cy="380" r="16"/><circle cx="1024" cy="380" r="16"/>
+  </g>
+  <text x="970" y="440" font-size="32" font-weight="800" text-anchor="middle" fill="#1B1A17" data-recall="true">~30–32 ATP</text>
+  <text x="970" y="468" font-size="18" text-anchor="middle" fill="#6A6458">per glucose, in total</text>
+
+  <!-- lower road: fermentation -->
+  <text x="560" y="580" font-size="22" font-weight="700" fill="#1B1A17">NO ↓</text>
+  <text x="720" y="575" font-size="30" font-weight="800" fill="#E4472B" data-recall="true">Fermentation</text>
+  <!-- sprinter's legs -->
+  <g transform="translate(760 700)" stroke="#1B1A17" stroke-width="6" stroke-linecap="round" fill="none">
+    <circle cx="0" cy="-60" r="12" fill="#1B1A17"/>
+    <line x1="0" y1="-48" x2="0" y2="-10"/><line x1="0" y1="-10" x2="-22" y2="20"/><line x1="0" y1="-10" x2="24" y2="12"/><line x1="24" y1="12" x2="34" y2="34"/>
+    <line x1="0" y1="-36" x2="-24" y2="-22"/><line x1="0" y1="-36" x2="24" y2="-46"/>
+  </g>
+  <g fill="#E4472B"><path d="M745 714 q 6 -16 12 0 q -6 10 -12 0z"/><path d="M790 708 q 6 -16 12 0 q -6 10 -12 0z"/></g>
+  <text x="810" y="660" font-size="26" font-weight="700" fill="#1B1A17" data-recall="true">Lactate</text>
+  <text x="810" y="686" font-size="18" fill="#6A6458">in your muscles (the burn)</text>
+  <!-- yeast + bread -->
+  <ellipse cx="930" cy="720" rx="44" ry="26" fill="#D69E2E" stroke="#1B1A17" stroke-width="3"/>
+  <path d="M898 712 q 10 -8 20 0 M922 708 q 10 -8 20 0" stroke="#1B1A17" stroke-width="2" fill="none"/>
+  
+  <text x="985" y="730" font-size="26" font-weight="700" fill="#1B1A17" data-recall="true">Ethanol + CO₂</text>
+  <text x="985" y="756" font-size="18" fill="#6A6458">in yeast (bread rises)</text>
+  <text x="340" y="700" font-size="22" font-weight="700" fill="#1B1A17">Only 2 ATP</text>
+  <text x="340" y="728" font-size="18" fill="#6A6458">but it recycles</text>
+  <text x="340" y="760" font-size="26" font-weight="700" fill="#6B46C1" data-recall="true">NAD⁺</text>
+  <text x="420" y="760" font-size="18" fill="#6A6458">so glycolysis can keep going</text>
+</svg>

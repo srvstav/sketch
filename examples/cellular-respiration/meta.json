@@ -1,0 +1,80 @@
+{
+  "deck": {
+    "id": "example-cellular-respiration",
+    "created": "2026-10-20T00:00:00.000Z",
+    "title": "Cellular respiration",
+    "subject": "Biology · example",
+    "focus": "",
+    "sourceNames": ["notes.md"],
+    "model": "example",
+    "passAt": 0.8,
+    "links": [
+      { "from": "i1", "to": "i2", "label": "pyruvate becomes acetyl-CoA" },
+      { "from": "i2", "to": "i3", "label": "NADH and FADH₂ carry electrons" },
+      { "from": "i1", "to": "i4", "label": "no oxygen: pyruvate is fermented" }
+    ]
+  },
+  "overview": { "file": "overview.svg", "caption": "Glucose enters the town, gets split in the shed, then powers the mitochondrion's carousel and dam — unless there's no oxygen, and it takes the fermentation detour." },
+  "ideas": [
+    {
+      "file": "glycolysis.svg", "id": "i1", "title": "Glycolysis", "shape": "machine",
+      "core": "In the cytoplasm, without oxygen, glucose (6C) is split into two pyruvate (3C), netting 2 ATP and 2 NADH.",
+      "why_shape": "It's a single processing step with inputs, a cost, and outputs: a shed on a rail line.",
+      "key_terms": ["Cytoplasm", "Glucose", "Pyruvate", "Net 2 ATP", "2 NADH"],
+      "caption": "A six-car glucose train rolls into the splitting shed, pays 2 ATP to get in, and leaves as two three-car pyruvate trains — 4 ATP made, 2 kept.",
+      "hook": "Giant red scissors snip the train in half: 6 → 3 + 3.",
+      "questions": [
+        { "q": "Where in the cell does glycolysis happen?", "answer": "The cytoplasm." },
+        { "q": "What molecule goes into glycolysis, and how many carbons does it have?", "answer": "Glucose, 6 carbons." },
+        { "q": "What comes out of glycolysis?", "answer": "Two pyruvate, 3 carbons each (plus ATP and NADH)." },
+        { "q": "What is the net ATP gain from glycolysis, and why isn't it 4?", "answer": "2 ATP: 4 are made but 2 are invested." },
+        { "q": "Does glycolysis need oxygen?", "answer": "No." }
+      ]
+    },
+    {
+      "file": "krebs.svg", "id": "i2", "title": "The Krebs cycle", "shape": "cycle",
+      "core": "In the mitochondrial matrix, acetyl-CoA joins oxaloacetate to make citrate; each turn releases 2 CO₂ and makes 3 NADH, 1 FADH₂ and 1 ATP. It turns twice per glucose.",
+      "why_shape": "It's a loop that ends where it starts (oxaloacetate comes back), so a carousel.",
+      "key_terms": ["Mitochondrial matrix", "Acetyl-CoA", "Oxaloacetate", "Citrate", "CO₂", "NADH", "FADH₂", "ATP"],
+      "caption": "Acetyl-CoA climbs onto the carousel next to oxaloacetate, making citrate; every lap lets go of two CO₂ balloons and drops three kinds of prizes.",
+      "hook": "Grey CO₂ balloons float away from the carousel — that's the CO₂ you breathe out.",
+      "questions": [
+        { "q": "Where does the Krebs cycle take place?", "answer": "The mitochondrial matrix." },
+        { "q": "What molecule enters the Krebs cycle?", "answer": "Acetyl-CoA (2 carbons)." },
+        { "q": "Acetyl-CoA combines with what, and what does it form?", "answer": "Oxaloacetate; it forms citrate (6C)." },
+        { "q": "What gas is released, and how much per turn?", "answer": "CO₂, 2 per turn." },
+        { "q": "How many times does the cycle turn per glucose, and what does each turn produce?", "answer": "Twice; each turn makes 3 NADH, 1 FADH₂ and 1 ATP." }
+      ]
+    },
+    {
+      "file": "etc.svg", "id": "i3", "title": "Electron transport chain", "shape": "machine",
+      "core": "On the inner mitochondrial membrane, electrons from NADH and FADH₂ power pumps that push H⁺ out; H⁺ flows back through ATP synthase, making about 26–28 ATP. Oxygen takes the last electrons and forms water.",
+      "why_shape": "A gradient that stores energy and releases it through one gate is a dam with a turbine.",
+      "key_terms": ["Inner mitochondrial membrane", "Electrons", "ATP synthase", "Oxygen", "Water", "~28 ATP"],
+      "caption": "Electrons hop pump to pump, each hop pushing H⁺ up behind the dam; H⁺ rushes back down through the ATP synthase turbine, and oxygen catches the last electrons.",
+      "hook": "Oxygen is a goalkeeper at the end of the line — without it, the electrons pile up and the whole chain stops.",
+      "questions": [
+        { "q": "Where does the electron transport chain happen?", "answer": "The inner mitochondrial membrane." },
+        { "q": "What does the energy from the electrons do?", "answer": "Pumps H⁺ ions into the space between the membranes." },
+        { "q": "How is ATP made in this stage?", "answer": "H⁺ flows back through ATP synthase, which spins and makes ATP." },
+        { "q": "What is the final electron acceptor, and what does it form?", "answer": "Oxygen; it forms water." },
+        { "q": "About how much ATP does this stage make?", "answer": "About 26–28 ATP, most of the total." }
+      ]
+    },
+    {
+      "file": "fork.svg", "id": "i4", "title": "With or without oxygen", "shape": "journey",
+      "core": "With oxygen, pyruvate goes on to the Krebs cycle and electron transport (about 30–32 ATP in total). Without it, cells ferment: muscles make lactate, yeast make ethanol and CO₂. Fermentation makes no extra ATP but regenerates NAD⁺ so glycolysis can continue.",
+      "why_shape": "One molecule, two possible routes decided by one condition: a fork in the road with a signpost.",
+      "key_terms": ["Oxygen", "~30–32 ATP", "Fermentation", "Lactate", "Ethanol + CO₂", "NAD⁺"],
+      "caption": "The pyruvate car reaches a signpost asking about oxygen: the upper road pays out a pile of ATP, the lower road only recycles NAD⁺ — into burning legs or rising bread.",
+      "hook": "A sprinter with burning legs and a loaf of rising bread sit side by side on the 'no oxygen' road.",
+      "questions": [
+        { "q": "What decides which way pyruvate goes?", "answer": "Whether there is enough oxygen." },
+        { "q": "About how much ATP does aerobic respiration make per glucose in total?", "answer": "About 30–32 ATP." },
+        { "q": "What do human muscles make without oxygen?", "answer": "Lactate (lactic acid)." },
+        { "q": "What does yeast make during fermentation?", "answer": "Ethanol and CO₂." },
+        { "q": "Why does fermentation happen if it makes no extra ATP?", "answer": "It regenerates NAD⁺ so glycolysis can keep making 2 ATP." }
+      ]
+    }
+  ]
+}

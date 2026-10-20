@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif">
+  <rect width="1200" height="800" fill="#FBF7EE"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1B1A17"/></marker>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#E4472B"/></marker>
+  </defs>
+  <text x="40" y="62" font-size="38" font-weight="700" fill="#1B1A17">Glycolysis: the splitting shed</text>
+  <text x="40" y="96" font-size="20" fill="#6A6458">Step 1 of cellular respiration</text>
+
+  <!-- where sign -->
+  <line x1="180" y1="230" x2="180" y2="300" stroke="#1B1A17" stroke-width="6"/>
+  <rect x="50" y="140" width="260" height="92" rx="6" fill="#FFFFFF" stroke="#1B1A17" stroke-width="3"/>
+  <text x="180" y="172" font-size="18" text-anchor="middle" fill="#6A6458" letter-spacing="2">WHERE</text>
+  <text x="180" y="212" font-size="30" font-weight="700" text-anchor="middle" fill="#2B6CB0" data-recall="true">Cytoplasm</text>
+  <text x="180" y="334" font-size="21" text-anchor="middle" fill="#E4472B" font-style="italic">no oxygen needed</text>
+
+  <!-- ground -->
+  <line x1="20" y1="660" x2="1180" y2="660" stroke="#1B1A17" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+
+  <!-- shed -->
+  <polygon points="410,300 600,190 790,300" fill="#D69E2E" fill-opacity="0.45" stroke="#1B1A17" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="430" y="300" width="340" height="320" fill="#D69E2E" fill-opacity="0.18" stroke="#1B1A17" stroke-width="4"/>
+  <text x="600" y="282" font-size="22" font-weight="700" text-anchor="middle" fill="#1B1A17" letter-spacing="3">SPLITTING SHED</text>
+  <rect x="430" y="470" width="40" height="150" fill="#FBF7EE" stroke="#1B1A17" stroke-width="3"/>
+  <rect x="730" y="460" width="40" height="160" fill="#FBF7EE" stroke="#1B1A17" stroke-width="3"/>
+
+  <!-- input track + glucose train: 6 cars -->
+  <line x1="40" y1="560" x2="600" y2="560" stroke="#1B1A17" stroke-width="4"/>
+  <g fill="#2B6CB0" stroke="#1B1A17" stroke-width="2">
+    <rect x="40" y="515" width="52" height="40" rx="6"/><rect x="98" y="515" width="52" height="40" rx="6"/>
+    <rect x="156" y="515" width="52" height="40" rx="6"/><rect x="214" y="515" width="52" height="40" rx="6"/>
+    <rect x="272" y="515" width="52" height="40" rx="6"/><rect x="330" y="515" width="52" height="40" rx="6"/>
+  </g>
+  <g font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="middle">
+    <text x="66" y="542">C</text><text x="124" y="542">C</text><text x="182" y="542">C</text>
+    <text x="240" y="542">C</text><text x="298" y="542">C</text><text x="356" y="542">C</text>
+  </g>
+  <text x="210" y="604" font-size="30" font-weight="700" text-anchor="middle" fill="#2B6CB0" data-recall="true">Glucose</text>
+  <text x="210" y="634" font-size="19" text-anchor="middle" fill="#6A6458">one train of 6 carbons</text>
+
+  <!-- pays in 2 ATP -->
+  <path d="M300 420 C 360 400, 400 400, 440 420" fill="none" stroke="#E4472B" stroke-width="4" marker-end="url(#arrRed)"/>
+  <text x="290" y="412" font-size="21" text-anchor="end" fill="#E4472B" font-weight="700">pays in 2 ATP</text>
+
+  <!-- giant scissors (the hook) -->
+  <g transform="translate(560 500)">
+    <polygon points="0,-8 190,-78 196,-62 0,10" fill="#B8C2CC" stroke="#1B1A17" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="0,8 190,78 196,62 0,-10" fill="#9AA5B1" stroke="#1B1A17" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="0" y1="0" x2="-34" y2="-26" stroke="#E4472B" stroke-width="10" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="-34" y2="26" stroke="#E4472B" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="-62" cy="-42" rx="30" ry="22" fill="none" stroke="#E4472B" stroke-width="10"/>
+    <ellipse cx="-62" cy="42" rx="30" ry="22" fill="none" stroke="#E4472B" stroke-width="10"/>
+    <circle cx="0" cy="0" r="7" fill="#1B1A17"/>
+  </g>
+  <text x="600" y="380" font-size="20" text-anchor="middle" fill="#1B1A17" font-style="italic">snip! 6 → 3 + 3</text>
+
+  <!-- makes 4 ATP -->
+  <path d="M770 340 C 820 300, 860 270, 900 250" fill="none" stroke="#2F855A" stroke-width="4" marker-end="url(#arr)"/>
+  <g fill="#D69E2E" stroke="#1B1A17" stroke-width="2">
+    <circle cx="930" cy="230" r="18"/><circle cx="972" cy="230" r="18"/><circle cx="1014" cy="230" r="18"/><circle cx="1056" cy="230" r="18"/>
+  </g>
+  <text x="993" y="190" font-size="21" text-anchor="middle" fill="#2F855A" font-weight="700">makes 4 ATP</text>
+
+  <!-- output tracks + two pyruvate trains of 3 -->
+  <line x1="770" y1="540" x2="1170" y2="540" stroke="#1B1A17" stroke-width="4"/>
+  <line x1="770" y1="610" x2="1170" y2="610" stroke="#1B1A17" stroke-width="4"/>
+  <g fill="#2F855A" stroke="#1B1A17" stroke-width="2">
+    <rect x="860" y="495" width="52" height="40" rx="6"/><rect x="918" y="495" width="52" height="40" rx="6"/><rect x="976" y="495" width="52" height="40" rx="6"/>
+    <rect x="860" y="565" width="52" height="40" rx="6"/><rect x="918" y="565" width="52" height="40" rx="6"/><rect x="976" y="565" width="52" height="40" rx="6"/>
+  </g>
+  <g font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="middle">
+    <text x="886" y="522">C</text><text x="944" y="522">C</text><text x="1002" y="522">C</text>
+    <text x="886" y="592">C</text><text x="944" y="592">C</text><text x="1002" y="592">C</text>
+  </g>
+  <text x="944" y="474" font-size="30" font-weight="700" text-anchor="middle" fill="#2F855A" data-recall="true">Pyruvate</text>
+  <text x="1060" y="474" font-size="22" text-anchor="start" fill="#2F855A">× 2</text>
+  <text x="944" y="642" font-size="19" text-anchor="middle" fill="#6A6458">two trains of 3 carbons</text>
+
+  <!-- what you keep -->
+  <path d="M560 622 L540 686" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M640 622 L700 686" stroke="#1B1A17" stroke-width="3" marker-end="url(#arr)"/>
+  <rect x="420" y="692" width="200" height="80" rx="10" fill="#E4472B" fill-opacity="0.18" stroke="#1B1A17" stroke-width="3"/>
+  <text x="520" y="742" font-size="28" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">Net 2 ATP</text>
+  <rect x="640" y="692" width="200" height="80" rx="10" fill="#6B46C1" fill-opacity="0.18" stroke="#1B1A17" stroke-width="3"/>
+  <text x="740" y="742" font-size="28" font-weight="700" text-anchor="middle" fill="#1B1A17" data-recall="true">2 NADH</text>
+  <text x="870" y="722" font-size="19" fill="#1B1A17">4 made − 2 paid in = 2 kept</text>
+  <text x="870" y="752" font-size="19" fill="#6A6458">NADH carries electrons to step 3</text>
+</svg>
