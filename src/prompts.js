@@ -1,5 +1,6 @@
 // Prompts and output schemas. The system prompt is byte-stable so it caches across every call in a run.
 import { TEMPLATES } from './scenes.js';
+import { ICONS, ICON_GUIDE } from './icons.js';
 
 export const SHAPES = [
   'machine', 'journey', 'map', 'seesaw', 'tree', 'building', 'cycle', 'river',
@@ -71,8 +72,8 @@ export const SCENE = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { label: STR, note: STR, handoff: STR },
-        required: ['label', 'note', 'handoff'],
+        properties: { label: STR, note: STR, handoff: STR, icon: { type: 'string', enum: [...ICONS, 'none'] }, stat: STR },
+        required: ['label', 'note', 'handoff', 'icon', 'stat'],
         additionalProperties: false,
       },
     },
@@ -93,6 +94,8 @@ export const SCENE_GUIDE = `Scene. sketch draws these shapes itself from your wo
 - journey: stops on a road through a method, proof or argument. pitfall = the step after which students most often go wrong (after = that step's index from 0) and the mistake in one line. start = where you begin, end = what you reach.
 - dominoes: causes, each knocking over the next. start = the first push, end = the final effect.
 - building: floors from the foundation (first step) up; each rests on the one below. handoff = what this floor gives the one above. end = what sits on top (the roof). start = what the whole thing stands on, or empty.
+- icon: the picture drawn on this step, from this list (name, then what it can stand for): ${ICON_GUIDE}. Pick the one a student would link to the step at a glance: scissors for a split, battery for ATP made, recycle for something regenerated. Use each icon at most once per scene; "none" if nothing fits.
+- stat: the one number or short formula on this step that a test would ask, at most 10 characters ("+2 ATP", "6C → 2×3C", "1914", "x² + 1"). Empty when the step has no number. Never repeat the label.
 - hook: one vivid, odd, concrete image tied to the hardest fact, at most 14 words. at = the index of the step it belongs to.
 - Every answer to the questions must be readable from the scene's words, each placed on the step it belongs to. Never put a question or an answer list in it.
 - Unused text fields are empty strings; pitfall.after is -1 when there is no pitfall.`;
@@ -320,4 +323,45 @@ export function recallTask(items) {
   return `A student is practising recall. For each blank, they were shown a picture with one label hidden and typed what goes there. Decide if their answer means the same as the hidden label in this context (spelling slips and synonyms are fine; a different concept is wrong). Give one short, kind line of feedback.
 
 ${items.map((it, i) => `${i + 1}. Idea: ${it.idea}\n   Hidden label: ${it.expected}\n   Student typed: ${it.given || '(blank)'}`).join('\n')}`;
+}
+
+export const EXPLAIN_SCHEMA = {
+  type: 'object',
+  properties: {
+    facts: {
+      type: 'array',
+      description: 'One entry per key fact, in the order given.',
+      items: {
+        type: 'object',
+        properties: {
+          covered: { type: 'boolean' },
+          note: { type: 'string', description: 'One short line: what they said, or what was missing.' },
+        },
+        required: ['covered', 'note'],
+        additionalProperties: false,
+      },
+    },
+    wrong: { type: 'array', items: { type: 'string' }, description: 'Statements in the explanation that are false, each with the correction. Empty if none.' },
+    next: { type: 'string', description: 'The one thing to add or fix next time, in one sentence.' },
+  },
+  required: ['facts', 'wrong', 'next'],
+  additionalProperties: false,
+};
+
+export function explainTask(idea, text) {
+  const facts = idea.questions.map((q, i) => `${i + 1}. ${q.q} → ${q.answer}`).join('\n');
+  return `A student is practising explaining an idea out loud, as if to a friend who missed the class. Check their explanation against the key facts.
+A fact counts as covered when the explanation states it or something that clearly means the same, even in plain words. It does not count if it is only hinted at or named without saying what it does.
+List anything they said that is false. Be brief and direct; no praise.
+
+Idea: ${idea.title}
+What it is: ${idea.core}
+
+Key facts (question → answer):
+${facts}
+
+Student's explanation:
+"""
+${text.trim().slice(0, 6000)}
+"""`;
 }

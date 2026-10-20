@@ -4,6 +4,7 @@ import { DOMParser } from 'linkedom';
 import { TEMPLATES, normalizeScene, renderScene, renderOverview, fit } from '../src/scenes.js';
 import { cleanSvg, blankOut } from '../src/svg.js';
 import { SCENES, STRESS, MAP } from './fixtures/scenes.js';
+import { ICONS, iconBadge } from '../src/icons.js';
 
 const clean = (s) => cleanSvg(s, { DOMParser });
 const draw = ({ shape, title, scene }) => renderScene(shape, title, normalizeScene(scene, shape));
@@ -16,7 +17,7 @@ test('every template draws a clean SVG whose recall labels are the scene\'s term
     const { svg, recall } = clean(raw);
     assert.equal(svg.length > 1000, true);
     const s = fx.scene;
-    const expected = [...s.steps.map((st) => st.label), s.start, s.end, s.center].filter(Boolean);
+    const expected = [...s.steps.flatMap((st) => [st.label, st.stat]), s.start, s.end, s.center].filter(Boolean);
     assert.deepEqual([...recall].sort(), [...expected].sort(), `${fx.shape}: recall labels`);
   }
 });
@@ -60,6 +61,23 @@ test('a word too long to fit is reported so a redraw can shorten it', () => {
   scene.steps.push(...structuredClone(scene.steps), ...structuredClone(scene.steps));
   const { issues } = renderScene('machine', 'T', normalizeScene(scene, 'machine'));
   assert.ok(issues.some((i) => i.includes('Supercalifragilistic') && i.includes('fewer words')));
+});
+
+test('icons and numbers: known icons are drawn, unknown ones dropped, numbers become recall labels', () => {
+  const scene = structuredClone(SCENES[0].scene);
+  scene.steps[1].icon = 'unicorn';
+  const n = normalizeScene(scene, 'machine');
+  assert.equal(n.steps[0].icon, 'coin');
+  assert.equal(n.steps[1].icon, '');
+  const { svg, recall } = clean(renderScene('machine', 'T', n).svg);
+  assert.ok(recall.includes('−2 ATP'));
+  assert.ok(svg.includes('translate('), 'icon drawn');
+  // The cleaner keeps every element of every icon.
+  const tags = (x) => (x.match(/<[a-z]/g) ?? []).length;
+  for (const name of ICONS) {
+    const raw = `<svg xmlns="http://www.w3.org/2000/svg">${iconBadge(name, 50, 50)}</svg>`;
+    assert.equal(tags(clean(raw).svg), tags(raw), name);
+  }
 });
 
 test('normalizeScene rejects what can\'t be drawn and clamps the rest', () => {

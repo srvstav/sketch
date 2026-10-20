@@ -37,7 +37,7 @@ ${sections}
 }
 
 export function deckToJson(deck) {
-  return JSON.stringify({ sketch: 1, deck: { ...deck, recall: {} } });
+  return JSON.stringify({ sketch: 1, deck: { ...deck, recall: {}, told: {} } });
 }
 
 /** Parse a shared deck and re-clean every picture: imported files are untrusted. */

@@ -9,13 +9,16 @@ Turn lecture slides, a chapter or your notes into pictures you can't forget. Eve
    5 exam-style questions per idea.
 2. **Draw.** One SVG per idea, plus an overview map of the whole topic. Key terms are marked for recall practice.
    Five shapes (machine, cycle, journey, dominoes, building) are drawn by sketch itself from the words the model
-   picks, so labels never collide and a free model draws as well as a paid one. Other shapes are drawn by the model.
+   picks, so labels never collide and a free model draws as well as a paid one. Each step gets an icon (from 55,
+   e.g. scissors for a split, battery for ATP made) and its key number on a badge; numbers are recall labels too. Other shapes are drawn by the model.
 3. **Check.** A second call sees *only the rendered picture* and answers the questions. A grader marks the answers
    against the material. Below 80%, sketch redraws with a list of what was missing (up to 3 rounds) and keeps the best.
 4. **Recall.** Labels go blank and you fill them in. Close answers are checked for meaning. The ones you miss come
    back first next time.
+5. **Explain.** Say or type the idea as if to a friend who missed the class. sketch lists which key facts you covered,
+   which you left out, and anything you got wrong. Without a key it checks which key terms you used.
 
-Runs entirely in the browser with your own key: **Gemini** (free tier works: [aistudio.google.com/apikey](https://aistudio.google.com/apikey)) or **Anthropic**. The key's format picks the provider. Your key and notes go only to that provider.
+Runs entirely in the browser with your own key: **Gemini** (free tier works: [aistudio.google.com/apikey](https://aistudio.google.com/apikey)), **Anthropic** or **OpenAI**. The key's format picks the provider. Your key and notes go only to that provider.
 
 ## Run it
 

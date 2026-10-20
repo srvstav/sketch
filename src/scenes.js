@@ -1,13 +1,14 @@
 // Scene templates: the model picks a shape and fills its slots (words only); this file draws it.
 // Layout is done here, so labels never collide and cheap models get the same picture quality as strong ones.
 // Pure string work: runs in the browser and in Node. Output still goes through cleanSvg like any drawing.
+import { ICONS, iconBadge, icon } from './icons.js';
 
 export const TEMPLATES = ['machine', 'cycle', 'journey', 'dominoes', 'building'];
 
 const PAPER = '#FBF7EE', INK = '#1B1A17', RED = '#E4472B', BLUE = '#2B6CB0', GREEN = '#2F855A', OCHRE = '#D69E2E', VIOLET = '#6B46C1';
 const FONT = 'Avenir Next, Helvetica Neue, Arial, sans-serif';
 const MAX_STEPS = { cycle: 7 };
-const LIMITS = { label: 48, note: 110, handoff: 40, edge: 60, hook: 110 };
+const LIMITS = { label: 48, note: 110, handoff: 40, edge: 60, hook: 110, stat: 12 };
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -16,13 +17,16 @@ const str = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max
 
 /**
  * Validate a model-filled scene. Returns null when it can't be drawn (caller falls back to free drawing).
- * @returns {{ steps: {label: string, note: string, handoff: string}[], start: string, end: string, center: string,
+ * @returns {{ steps: {label: string, note: string, handoff: string, icon: string, stat: string}[], start: string, end: string, center: string,
  *   pitfall: {after: number, text: string}, hook: {at: number, text: string} } | null}
  */
 export function normalizeScene(raw, shape) {
   if (!TEMPLATES.includes(shape) || !raw || !Array.isArray(raw.steps)) return null;
   const steps = raw.steps
-    .map((s) => ({ label: str(s?.label, LIMITS.label), note: str(s?.note, LIMITS.note), handoff: str(s?.handoff, LIMITS.handoff) }))
+    .map((s) => ({
+      label: str(s?.label, LIMITS.label), note: str(s?.note, LIMITS.note), handoff: str(s?.handoff, LIMITS.handoff),
+      icon: ICONS.includes(s?.icon) ? s.icon : '', stat: str(s?.stat, LIMITS.stat),
+    }))
     .filter((s) => s.label)
     .slice(0, MAX_STEPS[shape] ?? 6);
   if (steps.length < 2) return null;
@@ -77,6 +81,9 @@ export function renderOverview(map) {
     mid.push(box(x - w / 2, top, w, h, BLUE));
     mid.push(`<circle cx="${r1(x - w / 2 + 4)}" cy="${top + 4}" r="19" fill="${INK}"/>`);
     front.push(pen.text(x - w / 2 + 4, top + 4, String(i + 1), { w: 30, size: 20, weight: 700, fill: PAPER, lines: 1 }));
+    const steps = idea.scene?.steps ?? [];
+    const pic = steps[idea.scene?.hook?.at]?.icon || steps.find((st) => st.icon)?.icon;
+    if (pic) mid.push(iconBadge(pic, x + w / 2 - 4, top + 4, 22, BLUE));
     front.push(pen.text(x, top + h / 2, idea.title, { w: w - 24, size: 22, min: 14, lines: 3, weight: 700, recall: true }));
   });
   return { svg: frame(pen, map.title, [...back, ...mid, ...front].join('')), issues: pen.issues };
@@ -89,7 +96,7 @@ const DRAW = {
   machine(pen, s) {
     const N = s.steps.length;
     const x0 = 40 + (s.start ? 130 : 0), x1 = 1160 - (s.end ? 130 : 0);
-    const slot = (x1 - x0) / N, bw = slot - 28, top = 296, bh = 132, belt = 452;
+    const slot = (x1 - x0) / N, bw = slot - 28, top = 280, bh = 150, belt = 452;
     const cx = (i) => x0 + slot * (i + 0.5);
     const back = [], mid = [], front = [];
     for (let x = 64; x < 1160; x += 56) back.push(`<circle cx="${x}" cy="${belt + 32}" r="11" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/>`);
@@ -98,16 +105,19 @@ const DRAW = {
     const notes = [];
     s.steps.forEach((st, i) => {
       const x = cx(i);
-      mid.push(`<rect x="${r1(x - 8)}" y="${top - 30}" width="16" height="32" fill="${INK}" fill-opacity="0.75"/>`);
       mid.push(`<rect x="${r1(x - bw / 2 + 14)}" y="${top + bh - 2}" width="10" height="${belt - top - bh + 2}" fill="${INK}"/>`);
       mid.push(`<rect x="${r1(x + bw / 2 - 24)}" y="${top + bh - 2}" width="10" height="${belt - top - bh + 2}" fill="${INK}"/>`);
       mid.push(box(x - bw / 2, top, bw, bh, BLUE));
-      front.push(pen.text(x, top + bh / 2, st.label, { w: bw - 14, size: 22, min: 12, lines: 4, weight: 700, recall: true }));
+      if (st.icon) mid.push(iconBadge(st.icon, x, top, 26, BLUE));
+      if (st.stat) front.push(pen.stat(x, top + bh, st.stat, { w: bw + 10 }));
+      // The label sits between the icon (top edge) and the number (bottom edge).
+      const lt = top + (st.icon ? 28 : 8), lb = top + bh - (st.stat ? 16 : 8);
+      front.push(pen.text(x, (lt + lb) / 2, st.label, { w: bw - 14, size: 22, min: 12, lines: 3, weight: 700, recall: true }));
       const note = pen.block(x, 506, st.note, { w: slot - 14, size: 18, min: 13, lines: 6 });
       notes.push(note.h);
       front.push(note.svg);
       if (i < N - 1 && st.handoff) {
-        const a = x + bw * 0.22, b = cx(i + 1) - bw * 0.22, m = (x + cx(i + 1)) / 2;
+        const off = Math.max(bw * 0.22, 34), a = x + off, b = cx(i + 1) - off, m = (x + cx(i + 1)) / 2; // clear of the icon badges
         back.push(`<path d="M${r1(a)},${top - 2} Q${r1(m)},${top - 96} ${r1(b)},${top - 6}" fill="none" stroke="${VIOLET}" stroke-width="3" marker-end="url(#ah-v)"/>`);
         front.push(pen.text(m, top - 112, st.handoff, { w: slot - 16, size: 17, min: 12, lines: 2, fill: VIOLET, italic: true }));
       }
@@ -120,7 +130,8 @@ const DRAW = {
 
   /** Stops around a wheel; handoffs ride the rim, the hub says what the cycle is for. */
   cycle(pen, s) {
-    const N = s.steps.length, C = { x: 600, y: 445 }, RX = 300, RY = 215, BW = 200, BH = 72;
+    const statted = s.steps.some((st) => st.stat);
+    const N = s.steps.length, C = { x: 600, y: 445 }, RX = 300, RY = 215, BW = 200, BH = statted ? 84 : 72;
     const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
     const at = (a, k = 0) => ({ x: C.x + (RX - k) * Math.cos(a), y: C.y + (RY - k) * Math.sin(a) });
     // Walk along the rim until it leaves the badge (plus air for the arrowhead). O(steps) per badge.
@@ -135,6 +146,14 @@ const DRAW = {
       return t;
     };
     const badges = s.steps.map((_, i) => at(ang(i)));
+    // Icons ride the spokes, just inside each stop and clear of its number; never closer to the hub than RY - k allows.
+    const icons = s.steps.map((st, i) => {
+      if (!st.icon) return null;
+      const a = ang(i), p = at(a);
+      let k = 0, q = p;
+      while (k < RY - 110 && Math.abs(q.x - p.x) < BW / 2 + 30 && Math.abs(q.y - p.y) < BH / 2 + 44) q = at(a, (k += 4));
+      return q;
+    });
     const back = [`<ellipse cx="${C.x}" cy="${C.y}" rx="${RX}" ry="${RY}" fill="none" stroke="${INK}" stroke-opacity="0.12" stroke-width="14"/>`], mid = [], front = [];
     s.steps.forEach((st, i) => {
       const a = ang(i), b = ang(i + 1);
@@ -147,6 +166,7 @@ const DRAW = {
         const o = { w: 130, size: 16, min: 12, lines: 2, fill: VIOLET, italic: true };
         const m = pen.measure(st.handoff, o), hw = Math.min(o.w, Math.max(...m.lines.map((l) => l.length)) * m.size * GLYPH.regular) / 2 + 4, hh = m.h / 2 + 4;
         const clear = (h) => badges.every((p) => Math.abs(h.x - p.x) > hw + BW / 2 || Math.abs(h.y - p.y) > hh + BH / 2)
+          && icons.every((q) => !q || Math.abs(h.x - q.x) > hw + 26 || Math.abs(h.y - q.y) > hh + 26)
           && (Math.abs(h.x - C.x) > hw + 74 || Math.abs(h.y - C.y) > hh + 74);
         let h;
         for (let k = 60; k <= 150 && !clear(h = at((a + b) / 2, k)); k += 6);
@@ -154,7 +174,9 @@ const DRAW = {
       }
       mid.push(`<rect x="${r1(p.x - BW / 2)}" y="${r1(p.y - BH / 2)}" width="${BW}" height="${BH}" rx="${BH / 2}" fill="${PAPER}"/>`);
       mid.push(`<rect x="${r1(p.x - BW / 2)}" y="${r1(p.y - BH / 2)}" width="${BW}" height="${BH}" rx="${BH / 2}" fill="${BLUE}" fill-opacity="0.14" stroke="${BLUE}" stroke-width="3"/>`);
-      front.push(pen.text(p.x, p.y, st.label, { w: BW - 24, size: 21, min: 13, lines: 2, weight: 700, recall: true }));
+      front.push(pen.text(p.x, p.y - (st.stat ? 7 : 0), st.label, { w: BW - 24, size: 21, min: 13, lines: 2, weight: 700, recall: true }));
+      if (icons[i]) mid.push(iconBadge(st.icon, icons[i].x, icons[i].y, 24, BLUE));
+      if (st.stat) front.push(pen.stat(p.x, p.y + BH / 2, st.stat, { w: BW }));
       const c = Math.cos(a);
       if (Math.abs(c) > 0.3) {
         const x = c > 0 ? p.x + BW / 2 + 12 : p.x - BW / 2 - 12;
@@ -163,7 +185,7 @@ const DRAW = {
       } else if (Math.sin(a) < 0) {
         front.push(pen.block(p.x, p.y - BH / 2 - 10, st.note, { w: 340, size: 17, min: 12, lines: 2, valign: 'bottom' }).svg);
       } else {
-        front.push(pen.block(p.x, p.y + BH / 2 + 10, st.note, { w: 340, size: 17, min: 12, lines: 3 }).svg);
+        front.push(pen.block(p.x, p.y + BH / 2 + (st.stat ? 24 : 10), st.note, { w: 340, size: 17, min: 12, lines: 3 }).svg);
       }
       if (i === s.hook.at) front.push(bolt(p.x + (p.x < C.x ? -1 : 1) * (BW / 2 - 8), p.y - BH / 2 + 2)); // outer corner, away from the rim labels
     });
@@ -180,7 +202,8 @@ const DRAW = {
     }
     if (s.hook.at >= 0) {
       const p = at(ang(s.hook.at));
-      front.push(hookBox(pen, { x: p.x > C.x ? 720 : 40, y: 676, w: 440, lines: 3, text: s.hook.text }));
+      const w = statted ? 330 : 440; // narrower so it clears the numbers under the bottom stops
+      front.push(hookBox(pen, { x: p.x > C.x ? 1160 - w : 40, y: 676, w, lines: statted ? 4 : 3, text: s.hook.text }));
     }
     return [...back, ...mid, ...front].join('');
   },
@@ -194,23 +217,27 @@ const DRAW = {
     const back = [`<path d="M${road}" fill="none" stroke="#E6DCC6" stroke-width="58" stroke-linecap="round"/>`, `<path d="M${road}" fill="none" stroke="${PAPER}" stroke-width="3" stroke-dasharray="14 12"/>`];
     const mid = [], front = [];
     const mx = (i) => x0 + slot * (i + 0.5);
+    const iconic = s.steps.some((st) => st.icon);
     s.steps.forEach((st, i) => {
       const x = mx(i), y = ry(x), up = i % 2 === 0, half = Math.min(slot - 14, 170);
       // Signs on one side are two slots apart; edge signs shrink rather than shift into their neighbour.
       const sx = Math.max(x - half, x0 - 6), w = Math.min(x + half, x1 + 6) - sx;
       const label = pen.measure(st.label, { w: w - 24, size: 21, min: 14, lines: 2, weight: 700 });
       const note = pen.measure(st.note, { w: w - 24, size: 17, min: 12, lines: up ? 4 : 3 });
-      const h = 14 + label.h + (st.note ? 6 + note.h : 0) + 14;
+      // A number badge straddles the sign's far edge; make room for it there.
+      const pad = st.stat ? 12 : 0, dy = up ? pad : 0;
+      const h = 14 + label.h + (st.note ? 6 + note.h : 0) + 14 + pad;
       const sy = up ? y - 64 - h : y + 64;
       back.push(`<line x1="${r1(x)}" y1="${r1(y)}" x2="${r1(x)}" y2="${r1(up ? sy + h : sy)}" stroke="${INK}" stroke-width="3"/>`);
       mid.push(`<rect x="${r1(sx)}" y="${r1(sy)}" width="${r1(w)}" height="${r1(h)}" rx="8" fill="#FFFDF7" stroke="${INK}" stroke-width="2.5"/>`);
-      front.push(pen.block(sx + w / 2, sy + 14, st.label, { w: w - 24, size: 21, min: 14, lines: 2, weight: 700, recall: true }).svg);
-      if (st.note) front.push(pen.block(sx + w / 2, sy + 14 + label.h + 6, st.note, { w: w - 24, size: 17, min: 12, lines: up ? 4 : 3 }).svg);
-      mid.push(`<circle cx="${r1(x)}" cy="${r1(y)}" r="13" fill="${BLUE}" stroke="${INK}" stroke-width="2.5"/>`);
+      front.push(pen.block(sx + w / 2, sy + 14 + dy, st.label, { w: w - 24, size: 21, min: 14, lines: 2, weight: 700, recall: true }).svg);
+      if (st.note) front.push(pen.block(sx + w / 2, sy + 14 + dy + label.h + 6, st.note, { w: w - 24, size: 17, min: 12, lines: up ? 4 : 3 }).svg);
+      if (st.stat) front.push(pen.stat(sx + w / 2, up ? sy : sy + h, st.stat, { w: w - 70 }));
+      mid.push(st.icon ? iconBadge(st.icon, x, y, 24, BLUE) : `<circle cx="${r1(x)}" cy="${r1(y)}" r="13" fill="${BLUE}" stroke="${INK}" stroke-width="2.5"/>`);
       if (i === s.hook.at) front.push(bolt(sx + w - 6, sy + 6));
       if (i < N - 1 && st.handoff) {
         const hx = x + slot / 2;
-        front.push(pen.pill(hx, ry(hx), st.handoff, { w: slot - 50, size: 15, min: 11, lines: 2, fill: VIOLET, italic: true }));
+        front.push(pen.pill(hx, ry(hx), st.handoff, { w: slot - (iconic ? 66 : 50), size: 15, min: 11, lines: 2, fill: VIOLET, italic: true }));
       }
     });
     if (s.start) front.push(flag(pen, 115, ry(115), s.start, GREEN, 'START'));
@@ -235,12 +262,13 @@ const DRAW = {
     const x0 = s.start ? 190 : 60, x1 = s.end ? 990 : 1140, slot = (x1 - x0) / N;
     const cx = (i) => x0 + slot * (i + 0.5);
     const back = [`<line x1="40" y1="${ground}" x2="1160" y2="${ground}" stroke="${INK}" stroke-width="3"/>`], mid = [], front = [];
-    const notes = [];
+    const notes = [], noteY = s.steps.some((st) => st.stat) ? 520 : 492;
     s.steps.forEach((st, i) => {
       const x = cx(i), lean = N > 1 ? ((N - 1 - i) / (N - 1)) * 16 : 0;
-      mid.push(`<g transform="rotate(${r1(lean)} ${r1(x + TW / 2)} ${ground})"><rect x="${r1(x - TW / 2)}" y="${ground - TH}" width="${TW}" height="${TH}" rx="6" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/><rect x="${r1(x - TW / 2)}" y="${ground - TH}" width="${TW}" height="${TH}" rx="6" fill="${BLUE}" fill-opacity="0.2"/><line x1="${r1(x - TW / 2 + 6)}" y1="${ground - TH / 2}" x2="${r1(x + TW / 2 - 6)}" y2="${ground - TH / 2}" stroke="${INK}" stroke-width="2"/><circle cx="${r1(x)}" cy="${ground - TH * 0.75}" r="5" fill="${INK}"/><circle cx="${r1(x)}" cy="${ground - TH * 0.25}" r="5" fill="${INK}"/></g>`);
+      mid.push(`<g transform="rotate(${r1(lean)} ${r1(x + TW / 2)} ${ground})"><rect x="${r1(x - TW / 2)}" y="${ground - TH}" width="${TW}" height="${TH}" rx="6" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/><rect x="${r1(x - TW / 2)}" y="${ground - TH}" width="${TW}" height="${TH}" rx="6" fill="${BLUE}" fill-opacity="0.2"/><line x1="${r1(x - TW / 2 + 6)}" y1="${ground - TH / 2}" x2="${r1(x + TW / 2 - 6)}" y2="${ground - TH / 2}" stroke="${INK}" stroke-width="2"/>${st.icon ? icon(st.icon, x, ground - TH * 0.75, 38) : `<circle cx="${r1(x)}" cy="${ground - TH * 0.75}" r="5" fill="${INK}"/>`}<circle cx="${r1(x)}" cy="${ground - TH * 0.25}" r="5" fill="${INK}"/></g>`);
+      if (st.stat) front.push(pen.stat(x, ground + 25, st.stat, { w: slot - 10 }));
       front.push(pen.block(x, 286, st.label, { w: slot - 14, size: 21, min: 13, lines: 3, weight: 700, recall: true, valign: 'bottom' }).svg);
-      const note = pen.block(x, 492, st.note, { w: slot - 14, size: 17, min: 12, lines: 6 });
+      const note = pen.block(x, noteY, st.note, { w: slot - 14, size: 17, min: 12, lines: 6 });
       notes.push(note.h);
       front.push(note.svg);
       if (i < N - 1 && st.handoff) {
@@ -258,7 +286,7 @@ const DRAW = {
       mid.push(`<rect x="1012" y="290" width="148" height="180" rx="8" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/><rect x="1012" y="290" width="148" height="180" rx="8" fill="${RED}" fill-opacity="0.15"/>`);
       front.push(caps(1086, 278, 'RESULT', RED, 'middle'), pen.text(1086, 380, s.end, { w: 128, size: 20, min: 12, lines: 6, weight: 700, recall: true }));
     }
-    if (s.hook.at >= 0) front.push(hookBox(pen, { x: clamp(cx(s.hook.at) - 310, 40, 540), y: 672, w: 620, lines: 3, text: s.hook.text, to: { x: cx(s.hook.at), y: 492 + notes[s.hook.at] + 8 } }));
+    if (s.hook.at >= 0) front.push(hookBox(pen, { x: clamp(cx(s.hook.at) - 310, 40, 540), y: 672, w: 620, lines: 3, text: s.hook.text, to: { x: cx(s.hook.at), y: noteY + notes[s.hook.at] + 8 } }));
     return [...back, ...mid, ...front].join('');
   },
 
@@ -267,14 +295,17 @@ const DRAW = {
     const N = s.steps.length, L = 320, Rx = 880, top = 200, bottom = 660, fh = (bottom - top) / N;
     const back = [], mid = [], front = [];
     const fy = (i) => bottom - (i + 1) * fh;
+    const statted = s.steps.some((st) => st.stat), noteW = statted ? 176 : 272;
     mid.push(`<polygon points="290,${top} 600,118 910,${top}" fill="${PAPER}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><polygon points="290,${top} 600,118 910,${top}" fill="${RED}" fill-opacity="0.15"/>`);
     if (s.end) front.push(pen.text(600, 176, s.end, { w: 300, size: 19, min: 12, lines: 2, weight: 700, recall: true }));
     s.steps.forEach((st, i) => {
       const y = fy(i);
       mid.push(`<rect x="${L}" y="${r1(y)}" width="${Rx - L}" height="${r1(fh)}" fill="${PAPER}" stroke="${INK}" stroke-width="2.5"/><rect x="${L}" y="${r1(y)}" width="${Rx - L}" height="${r1(fh)}" fill="${BLUE}" fill-opacity="${i % 2 ? 0.1 : 0.2}"/>`);
       mid.push(`<line x1="580" y1="${r1(y + 10)}" x2="580" y2="${r1(y + fh - 10)}" stroke="${INK}" stroke-opacity="0.3" stroke-width="2"/>`);
-      front.push(pen.text(450, y + fh / 2, st.label, { w: 236, size: 22, min: 13, lines: clamp(Math.floor((fh - 12) / 27), 1, 3), weight: 700, recall: true }));
-      front.push(pen.text(594, y + fh / 2, st.note, { w: 272, size: 17, min: 12, lines: clamp(Math.floor((fh - 10) / 21), 1, 5), anchor: 'start' }));
+      if (st.icon) mid.push(iconBadge(st.icon, L + 32, y + fh / 2, Math.min(24, (fh - 12) / 2), BLUE));
+      front.push(pen.text(st.icon ? 474 : 450, y + fh / 2, st.label, { w: st.icon ? 188 : 236, size: 22, min: 13, lines: clamp(Math.floor((fh - 12) / 27), 1, 3), weight: 700, recall: true }));
+      front.push(pen.text(594, y + fh / 2, st.note, { w: noteW, size: 17, min: 12, lines: clamp(Math.floor((fh - 10) / 21), 1, 5), anchor: 'start' }));
+      if (st.stat) front.push(pen.stat(826, y + fh / 2, st.stat, { w: 104 }));
       if (i < N - 1 && st.handoff) {
         back.push(`<line x1="896" y1="${r1(y + 16)}" x2="896" y2="${r1(y - 14)}" stroke="${VIOLET}" stroke-width="2.5" marker-end="url(#ah-v)"/>`);
         front.push(pen.text(910, y, st.handoff, { w: 250, size: 16, min: 12, lines: 2, fill: VIOLET, italic: true, anchor: 'start' }));
@@ -414,6 +445,15 @@ function makePen() {
       const f = layout(str, o);
       const top = o.valign === 'bottom' ? y - f.h : y;
       return { svg: draw(x, top + f.size * 0.86, f, o), h: f.h };
+    },
+    /** A number badge: bold paper text on an ink pill centred on (x, cy). A recall label: numbers are what tests ask. */
+    stat(x, cy, str, o = {}) {
+      if (!str) return '';
+      const max = o.w ?? 160;
+      const f = layout(str, { w: max - 18, size: o.size ?? 19, min: 12, lines: 1, weight: 700 });
+      const w = Math.min(max, f.lines[0].length * f.size * GLYPH.bold + 20), h = f.size + 12;
+      return `<rect x="${r1(x - w / 2)}" y="${r1(cy - h / 2)}" width="${r1(w)}" height="${r1(h)}" rx="${r1(h / 2)}" fill="${INK}"/>`
+        + draw(x, cy - f.h / 2 + f.size * 0.86, f, { weight: 700, fill: PAPER, recall: true });
     },
     /** Centred text on a paper pill, for labels that sit on lines or roads. */
     pill(x, cy, str, o) {

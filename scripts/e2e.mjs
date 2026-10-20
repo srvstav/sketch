@@ -22,7 +22,7 @@ const base = `http://localhost:${server.address().port}/`;
 const svg = (t) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#FBF7EE"/><circle cx="600" cy="400" r="200" fill="#2B6CB0" fill-opacity="0.2" stroke="#1B1A17" stroke-width="6"/><text x="600" y="380" font-size="40" text-anchor="middle" data-recall="true">${t}</text><text x="600" y="460" font-size="28" text-anchor="middle" data-recall="true">Second label</text><script>alert(1)</script></svg>`;
 // A template scene: sketch draws it in code, so the model never writes this idea's SVG.
 const scene = (first) => ({
-  steps: [{ label: first, note: 'Light splits water', handoff: 'ATP + NADPH' }, { label: 'ATP synthase', note: 'Makes ATP', handoff: '' }],
+  steps: [{ label: first, note: 'Light splits water', handoff: 'ATP + NADPH', icon: 'sun', stat: '' }, { label: 'ATP synthase', note: 'Makes ATP', handoff: '', icon: 'gear', stat: '+3 ATP' }],
   start: 'Light', end: 'ATP', center: '', pitfall: { after: -1, text: '' }, hook: { at: 0, text: 'A solar panel stack' },
 });
 let grades = 0;
@@ -43,6 +43,7 @@ function answer(body) {
     if (partsOf(body)[0].type !== 'image') throw new Error('judge did not get an image');
     return { answers: ['a', 'b'] };
   }
+  if (props.includes('facts')) return { facts: [{ covered: true, note: 'said it' }, { covered: false, note: 'left out' }], wrong: ['ATP is not made in the stroma.'], next: 'Say where each step happens.' };
   if (props.includes('fix')) { grades++; return { results: [{ correct: true, note: '' }, { correct: grades > 1, note: grades > 1 ? '' : 'missing' }], fix: 'add it' }; }
   return { results: partsOf(body).at(-1).text.split('Hidden label').slice(1).map(() => ({ correct: true, feedback: 'close enough' })) };
 }
@@ -94,6 +95,16 @@ await step('5-recall-checked', async () => {
   await page.locator('.tally').waitFor();
 });
 await step('6-quiz', async () => { await page.getByRole('tab', { name: /Questions/ }).click(); await page.locator('.quiz').waitFor(); });
+const explain = async () => {
+  await page.keyboard.press('4');
+  await page.getByLabel('Your explanation').fill('Glycolysis happens in the cytoplasm and splits glucose into two pyruvate, making a net two ATP and two NADH.');
+  await page.getByRole('button', { name: 'Check' }).click();
+  await page.locator('.told').waitFor();
+};
+await step('6b-explain-no-key', async () => {
+  await explain();
+  if (!(await page.locator('.facts input[type=checkbox]').count())) problems.push('explain without a key shows no self-check list');
+});
 
 // full run with a stubbed API
 await page.locator('[data-go=home]').click();
@@ -113,6 +124,20 @@ await step('10-recall-model-graded', async () => {
   for (let i = 0; i < n; i++) await inputs.nth(i).fill('something rather different');
   await page.getByRole('button', { name: 'Check' }).click();
   await page.locator('.tally').waitFor();
+});
+
+await step('11-explain-model-graded', async () => {
+  await explain();
+  const tally = await page.locator('.told .tally').textContent();
+  if (tally !== '1/2 key facts') problems.push(`explain tally: ${tally}`);
+  if (!(await page.getByText('ATP is not made in the stroma.').count())) problems.push('explain did not list the false statement');
+});
+
+// spaced review: a missed label is due now, so the home page offers it
+await step('12-review-due', async () => {
+  await page.locator('[data-go=home]').click();
+  await page.getByRole('button', { name: /^Review \d+/ }).first().click();
+  await page.locator('.blanks input').first().waitFor();
 });
 
 // layout checker on a picture with known problems

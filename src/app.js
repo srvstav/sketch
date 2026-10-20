@@ -3,8 +3,8 @@ import { sourceBlocks, SketchError } from './llm.js';
 import { createModel, providerFor, modelFor, MODELS, PROVIDER_NAMES } from './model.js';
 import { sketch, DEFAULTS } from './pipeline.js';
 import { cleanSvg, blankOut, blankMark } from './svg.js';
-import { pickBlanks, localGrade, recordResult } from './recall.js';
-import { RECALL_SCHEMA, recallTask } from './prompts.js';
+import { pickBlanks, localGrade, recordResult, termsMentioned, dueByPicture } from './recall.js';
+import { RECALL_SCHEMA, recallTask, EXPLAIN_SCHEMA, explainTask } from './prompts.js';
 import { readFiles } from './files.js';
 import * as store from './store.js';
 import { svgUrl, rasterize, download, pngBlob, findLayoutIssues } from './render.js';
@@ -24,6 +24,7 @@ const state = {
   index: 0, // 0 = overview when present, else first idea
   mode: 'look',
   recall: null, // { key, hide, results }
+  explain: null, // { key, text, result, busy, picture }
   controller: null,
   tokens: { input: 0, output: 0, cached: 0 },
 };
@@ -153,6 +154,7 @@ function renderHome() {
         h('button', { class: 'open', onclick: () => openDeck(d) },
           h('b', { text: d.title }),
           h('small', { text: `${d.ideas.length} pictures · ${avgScore(d)} · ${new Date(d.created).toLocaleDateString()}` })),
+        dueLabels(d) ? h('button', { class: 'due', text: `Review ${dueLabels(d)}`, title: 'Labels due for review today', onclick: () => openDeck(d, { review: true }) }) : '',
         h('button', { class: 'del', text: 'delete', 'aria-label': `Delete ${d.title}`, onclick: () => { if (confirm(`Delete “${d.title}”?`)) { store.deleteDeck(d.id); renderHome(); } } }))))
       : h('p', { class: 'empty', text: 'No decks yet.' }),
     h('p', {}, h('button', { class: 'linkish', text: 'Open example: cellular respiration', onclick: openExample })),
@@ -162,12 +164,15 @@ function renderHome() {
       h('p', { text: 'Finds 3–8 core ideas in your material.' }),
       h('p', { text: 'Draws each idea as a picture whose shape matches it: a process as a machine, a choice as a fork.' }),
       h('p', { text: 'A second model answers 5 questions from the picture alone. Below 4/5, the picture is redrawn.' }),
-      h('p', { text: 'Recall: labels are hidden and you fill them in. Missed labels are hidden first next time.' })));
+      h('p', { text: 'Recall: labels are hidden and you fill them in. Missed labels are hidden first next time.' }),
+      h('p', { text: 'Explain: say or type the idea in your own words; see which key facts you left out.' })));
 
   mount(h('section', { class: 'home' },
     drop,
     library));
 }
+
+const dueLabels = (d) => dueByPicture(d).reduce((n, p) => n + p.due, 0);
 
 const avgScore = (d) => {
   const s = d.ideas.filter((i) => i.svg && i.questions?.length);
@@ -272,11 +277,14 @@ function slides(deck) {
     : ideas;
 }
 
-function openDeck(deck) {
+/** `review`: start in Recall on the first picture with labels due. */
+function openDeck(deck, { review = false } = {}) {
   state.deck = deck;
-  state.index = 0;
-  state.mode = 'look';
+  const first = review ? dueByPicture(deck)[0]?.key : null;
+  state.index = first ? Math.max(0, slides(deck).findIndex((s) => s.key === first)) : 0;
+  state.mode = first ? 'recall' : 'look';
   state.recall = null;
+  state.explain = null;
   renderDeck();
 }
 
@@ -284,6 +292,7 @@ function go(i) {
   const all = slides(state.deck);
   state.index = (i + all.length) % all.length;
   state.recall = null;
+  state.explain = null;
   renderDeck();
 }
 
@@ -291,7 +300,7 @@ function renderDeck() {
   const deck = state.deck;
   const all = slides(deck);
   const cur = all[state.index];
-  if (state.mode === 'quiz' && !cur.questions?.length) state.mode = 'look';
+  if ((state.mode === 'quiz' || state.mode === 'explain') && !cur.questions?.length) state.mode = 'look';
 
   const margin = h('nav', { class: 'margin', 'aria-label': 'Pictures in this deck' },
     h('p', { class: 'title', text: deck.title }),
@@ -318,10 +327,10 @@ function renderDeck() {
   const tab = (id, label, k) => h('button', { role: 'tab', 'aria-selected': state.mode === id ? 'true' : 'false', onclick: () => { state.mode = id; state.recall = null; renderDeck(); } }, label, h('kbd', { text: k }));
   const body = !cur.svg
     ? h('div', { class: 'sheet empty', text: cur.error ? `This one didn’t draw: ${cur.error}` : 'No picture.' })
-    : state.mode === 'recall' ? recallView(cur) : state.mode === 'quiz' ? quizView(cur) : lookView(cur);
+    : state.mode === 'recall' ? recallView(cur) : state.mode === 'quiz' ? quizView(cur) : state.mode === 'explain' ? explainView(cur) : lookView(cur);
 
   const stage = h('section', { class: 'stage' },
-    h('div', { class: 'modes', role: 'tablist' }, tab('look', 'Look', '1'), tab('recall', 'Recall', '2'), cur.questions?.length ? tab('quiz', 'Questions', '3') : ''),
+    h('div', { class: 'modes', role: 'tablist' }, tab('look', 'Look', '1'), tab('recall', 'Recall', '2'), cur.questions?.length ? [tab('quiz', 'Questions', '3'), tab('explain', 'Explain', '4')] : ''),
     h('h1', {}, h('span', { class: 'n', text: cur.n }), cur.title),
     body,
     tools('narrow'));
@@ -421,6 +430,100 @@ function quizView(s) {
       h('details', {}, h('summary', { text: 'Show answer' }), h('p', { text: q.answer }))))));
 }
 
+// Explain: say the idea in your own words, then see which key facts made it in.
+const Speech = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+function explainView(s) {
+  if (state.explain?.key !== s.key) state.explain = { key: s.key, text: '', result: null, busy: false, picture: 'icons' };
+  const ex = state.explain;
+  const allHidden = s.recall?.length ? blankOut(s.svg, s.recall.map((_, i) => i), dom) : s.svg;
+  const pic = ex.result ? picture(s.svg, s.title)
+    : ex.picture === 'icons' ? picture(allHidden, `${s.title} with every label hidden`)
+      : h('div', { class: 'sheet empty', text: 'Picture hidden.' });
+
+  const box = h('textarea', { class: 'explain-text', rows: 9, placeholder: `Explain “${s.title}” as if to a friend who missed the class.`, 'aria-label': 'Your explanation', disabled: ex.busy || Boolean(ex.result), oninput: (e) => { ex.text = e.target.value; } });
+  box.value = ex.text;
+
+  let rec = null;
+  const speak = Speech && !ex.result ? h('button', {
+    class: 'ghost', type: 'button', text: 'Speak',
+    onclick: (e) => {
+      const btn = e.currentTarget;
+      if (rec) { rec.stop(); return; }
+      rec = new Speech();
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = navigator.language || 'en-US';
+      rec.onresult = (ev) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) ex.text = `${ex.text}${ex.text && !ex.text.endsWith(' ') ? ' ' : ''}${ev.results[i][0].transcript.trim()}`;
+        box.value = ex.text;
+      };
+      rec.onend = () => { rec = null; btn.textContent = 'Speak'; };
+      rec.onerror = (ev) => toast(`Microphone: ${ev.error}`);
+      rec.start();
+      btn.textContent = 'Stop';
+    },
+  }) : '';
+
+  const actions = ex.result
+    ? h('div', { class: 'actions' },
+      h('button', { class: 'primary', type: 'button', text: 'Again', onclick: () => { state.explain = null; renderDeck(); } }),
+      h('button', { class: 'ghost', type: 'button', text: 'Next picture →', onclick: () => go(state.index + 1) }))
+    : h('div', { class: 'actions' },
+      h('button', { class: 'primary', type: 'button', text: ex.busy ? 'Checking…' : 'Check', disabled: ex.busy, onclick: () => check() }),
+      speak,
+      h('button', { class: 'ghost', type: 'button', text: ex.picture === 'icons' ? 'Hide picture' : 'Show icons', onclick: () => { ex.picture = ex.picture === 'icons' ? 'none' : 'icons'; renderDeck(); } }));
+
+  const side = h('div', { class: 'explain' },
+    ex.result ? '' : h('p', { class: 'muted', text: 'Say what it is, how it works, and the numbers. Labels are hidden; icons stay as cues.' }),
+    box, actions, ex.result ? explainResult(s, ex.result) : '');
+  return h('div', { class: 'recall' }, pic, side);
+
+  async function check() {
+    if (ex.text.trim().split(/\s+/).length < 8) return toast('Write or say a few sentences first.');
+    rec?.stop();
+    const terms = termsMentioned(s.recall ?? [], ex.text);
+    ex.busy = true;
+    renderDeck();
+    let model = null;
+    try {
+      const claude = await getModel({ prompt: false });
+      if (claude) model = await claude.call({ task: explainTask(s, ex.text), schema: EXPLAIN_SCHEMA, effort: 'low', maxTokens: 6000 });
+    } catch (err) { toast(`Couldn’t check it: ${err.message}`); }
+    ex.busy = false;
+    ex.result = { terms, model };
+    if (model) {
+      const covered = s.questions.filter((_, i) => model.facts?.[i]?.covered).length;
+      state.deck.told = { ...(state.deck.told ?? {}), [s.key]: { covered, total: s.questions.length, at: Date.now() } };
+      store.saveDeck(state.deck);
+    }
+    if (state.explain === ex) renderDeck();
+  }
+}
+
+function explainResult(s, { terms, model }) {
+  const said = terms.filter((t) => t.said).length;
+  const termLine = terms.length ? h('p', { class: 'terms' },
+    h('b', { text: `Terms used: ${said}/${terms.length}` }),
+    terms.map((t) => h('span', { class: `term ${t.said ? 'right' : 'wrong'}`, text: t.term }))) : '';
+  if (!model) {
+    // No key: the student ticks the facts off themselves.
+    return h('div', { class: 'told' }, termLine,
+      h('p', { class: 'muted', text: 'Tick the facts you said. Add an API key to have them checked for you.' }),
+      h('ul', { class: 'facts' }, s.questions.map((q) => h('li', {}, h('label', {}, h('input', { type: 'checkbox' }), h('span', {}, h('b', { text: q.answer }), h('small', { text: q.q })))))));
+  }
+  const facts = s.questions.map((q, i) => ({ q, ...(model.facts?.[i] ?? { covered: false, note: '' }) }));
+  const covered = facts.filter((f) => f.covered).length;
+  return h('div', { class: 'told' },
+    h('p', { class: 'tally', text: `${covered}/${facts.length} key facts` }),
+    model.next ? h('p', { class: 'next' }, h('b', { text: 'Next time: ' }), model.next) : '',
+    h('ul', { class: 'facts' }, facts.map((f) => h('li', { class: f.covered ? 'right' : 'wrong' },
+      h('span', { class: 'mark', text: f.covered ? '✓' : '✗' }),
+      h('span', {}, h('b', { text: f.q.answer }), h('small', { text: f.note || f.q.q }))))),
+    model.wrong?.length ? h('div', { class: 'wrongs' }, h('b', { text: 'Not right' }), h('ul', {}, model.wrong.map((w) => h('li', { text: w })))) : '',
+    termLine);
+}
+
 async function exportPng(s) {
   if (!s?.svg) return;
   try {
@@ -436,7 +539,7 @@ document.addEventListener('keydown', (e) => {
   if (!state.deck || state.controller || e.target.closest('input, textarea, select, dialog')) return;
   if (e.key === 'ArrowRight' || e.key === 'j') go(state.index + 1);
   else if (e.key === 'ArrowLeft' || e.key === 'k') go(state.index - 1);
-  else if (['1', '2', '3'].includes(e.key)) { state.mode = ['look', 'recall', 'quiz'][+e.key - 1]; state.recall = null; renderDeck(); }
+  else if (['1', '2', '3', '4'].includes(e.key)) { state.mode = ['look', 'recall', 'quiz', 'explain'][+e.key - 1]; state.recall = null; renderDeck(); }
 });
 window.addEventListener('beforeunload', (e) => { if (state.controller) e.preventDefault(); });
 
