@@ -1,3 +1,5 @@
+<p align="center"><b>Live: <a href="https://srvstav.github.io/sketch/">srvstav.github.io/sketch</a></b><br>Paste your course notes and get labelled pictures of the main ideas, then practise filling in the labels.</p>
+
 # sketch
 
 Turn lecture slides, a chapter or your notes into pictures you can't forget. Every picture is tested before you see it.
