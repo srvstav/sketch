@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DOMParser } from 'linkedom';
-import { TEMPLATES, normalizeScene, renderScene, renderOverview, fit } from '../src/scenes.js';
+import { TEMPLATES, normalizeScene, renderScene, renderOverview, fit, labelIssues } from '../src/scenes.js';
 import { cleanSvg, blankOut } from '../src/svg.js';
 import { SCENES, STRESS, MAP } from './fixtures/scenes.js';
 import { ICONS, iconBadge } from '../src/icons.js';
@@ -104,4 +104,18 @@ test('the overview is drawn from the map: ideas in order, titles as recall label
   assert.deepEqual(issues, []);
   const { recall } = clean(raw);
   assert.deepEqual(recall, MAP.ideas.map((i) => i.title));
+});
+
+test('labels must be the material\'s own terms; PDFs and images skip the check', () => {
+  const scene = normalizeScene(SCENES.find((s) => s.shape === 'cycle').scene, 'cycle');
+  const notes = 'Acetyl-CoA joins oxaloacetate to make citrate, then α-ketoglutarate, succinyl-CoA and succinate.';
+  assert.deepEqual(labelIssues(scene, notes), [], 'case, numbers like (5C) and Greek prefixes are fine');
+  scene.steps[1].label = 'Carbon Stripping';
+  const issues = labelIssues(scene, notes);
+  assert.equal(issues.length, 1);
+  assert.ok(issues[0].includes('"Carbon Stripping"'));
+  assert.deepEqual(labelIssues(scene, notes, ['carbon stripping']), [], 'key terms count as the material');
+  assert.deepEqual(labelIssues(scene, null), [], 'no text to check against');
+  scene.steps[1].label = 'Citrates';
+  assert.deepEqual(labelIssues(scene, notes), [], 'word endings may differ');
 });

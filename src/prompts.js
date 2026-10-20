@@ -88,7 +88,7 @@ export const SCENE = {
 };
 
 export const SCENE_GUIDE = `Scene. sketch draws these shapes itself from your words: ${TEMPLATES.join(', ')}. For any other shape, return an empty steps list, empty strings, and -1 for pitfall.after and hook.at.
-- steps: the parts in order, 3 to 6 (cycle: up to 7). label = the key term, at most 4 words, a real term from the material. note = what happens there or why it matters, at most 12 words, concrete (numbers, places, names). handoff = what passes from this step to the next, at most 4 words; empty for the last step (except in a cycle, where the last step hands back to the first).
+- steps: the parts in order, 3 to 6 (cycle: up to 7). label = the key term, at most 4 words, copied as the material writes it ("α-ketoglutarate", never an invented name like "Carbon Stripping"); sketch checks each label against the material. note = what happens there or why it matters, at most 12 words, concrete (numbers, places, names). handoff = what passes from this step to the next, at most 4 words; empty for the last step (except in a cycle, where the last step hands back to the first).
 - machine: stations on a production line. start = the raw input, end = the final product.
 - cycle: stops around a wheel that returns to the first. center = what the cycle is for or where it happens. start = what enters, end = what leaves.
 - journey: stops on a road through a method, proof or argument. pitfall = the step after which students most often go wrong (after = that step's index from 0) and the mistake in one line. start = where you begin, end = what you reach.

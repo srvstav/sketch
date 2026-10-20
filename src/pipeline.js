@@ -5,7 +5,7 @@ import {
   MAP_SCHEMA, DRAW_SCHEMA, REFILL_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA, SHAPES,
   mapTask, drawTask, redrawTask, refillTask, overviewTask, judgeTask, gradeTask,
 } from './prompts.js';
-import { normalizeScene, renderScene, renderOverview } from './scenes.js';
+import { normalizeScene, renderScene, renderOverview, labelIssues } from './scenes.js';
 import { SketchError } from './llm.js';
 import { textIssues } from './svg.js';
 
@@ -39,7 +39,9 @@ export async function sketch({ claude, clean, rasterize, layout = async () => []
   );
   emit({ type: 'map', map });
 
-  const ctx = { claude, clean, rasterize, layout, source, signal, emit, o };
+  // Plain-text material lets template labels be checked against it; PDFs and images can't be.
+  const text = source.every((b) => b.source?.type === 'text') ? source.map((b) => b.source.data).join('\n') : null;
+  const ctx = { claude, clean, rasterize, layout, source, text, signal, emit, o };
   const drawIdeas = () => mapLimit(map.ideas, o.concurrency, (idea) => drawIdea(idea, ctx));
   const drawOver = () => (!o.overview ? Promise.resolve(null) : o.templates ? Promise.resolve(overviewPic(map, ctx)) : drawOverview(map, ctx));
   // One-at-a-time backends draw the overview last instead of alongside the ideas.
@@ -88,12 +90,12 @@ export function normalizeMap(raw, o = DEFAULTS) {
   return { title: String(raw.title || 'Untitled topic'), subject: String(raw.subject || ''), ideas, links };
 }
 
-async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal, emit, o }) {
+async function drawIdea(idea, { claude, clean, rasterize, layout, source, text, signal, emit, o }) {
   const rounds = [];
   let best = null;
   try {
     emit({ type: 'idea', id: idea.id, status: 'drawing', round: 1 });
-    let pic = idea.scene ? scenePic(idea, idea.scene, clean) : await drawClean(claude, clean, source, drawTask(idea), signal);
+    let pic = idea.scene ? scenePic(idea, idea.scene, clean, text) : await drawClean(claude, clean, source, drawTask(idea), signal);
 
     for (let round = 1; round <= o.maxRounds; round++) {
       emit({ type: 'idea', id: idea.id, status: 'checking', round });
@@ -114,7 +116,7 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
 
       emit({ type: 'idea', id: idea.id, status: 'redrawing', round: round + 1 });
       pic = pic.scene
-        ? await refill(idea, pic.scene, grade, round + 1, { claude, clean, source, signal })
+        ? await refill(idea, pic.scene, grade, round + 1, { claude, clean, source, text, signal })
         : await drawClean(claude, clean, source, redrawTask(idea, pic, grade, round + 1), signal);
     }
     const result = { ...idea, svg: best.svg, recall: best.recall, caption: best.caption, hook: best.hook, scene: best.scene ?? null, score: best.score, bestRound: best.round, rounds };
@@ -130,17 +132,17 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
   }
 }
 
-/** Draw a template scene in code. `cut` lists words that didn't fit, so a refill can shorten them. */
-function scenePic(idea, scene, clean) {
+/** Draw a template scene in code. `cut` lists words that didn't fit or labels not from the material, so a refill can fix them. */
+function scenePic(idea, scene, clean, text) {
   const { svg: raw, issues } = renderScene(idea.shape, idea.title, scene);
   const { svg, recall, texts } = clean(raw);
-  return { svg, recall, texts, scene, cut: issues, caption: idea.core, hook: scene.hook.text };
+  return { svg, recall, texts, scene, cut: [...issues, ...labelIssues(scene, text, idea.key_terms)], caption: idea.core, hook: scene.hook.text };
 }
 
 /** Redraw a template idea: the model rewrites only the scene's words. Unusable words keep the old scene. */
-async function refill(idea, scene, grade, round, { claude, clean, source, signal }) {
+async function refill(idea, scene, grade, round, { claude, clean, source, text, signal }) {
   const out = await claude.call({ source, task: refillTask(idea, scene, grade, round), schema: REFILL_SCHEMA, effort: 'high', maxTokens: 8000, signal });
-  return scenePic(idea, normalizeScene(out?.scene, idea.shape) ?? scene, clean);
+  return scenePic(idea, normalizeScene(out?.scene, idea.shape) ?? scene, clean, text);
 }
 
 function overviewPic(map, { clean, emit }) {

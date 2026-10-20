@@ -144,7 +144,8 @@ test('template shapes are drawn in code: no draw calls, redraws rewrite only the
     }
     return orig(req);
   };
-  const deck = await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'x' }]) });
+  const notes = 'The investment phase, splitting, then the payoff phase. Refilled.';
+  const deck = await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: notes }]) });
   const [i1, i2] = deck.ideas;
   const draws = claude.calls.filter((c) => c.schema === DRAW_SCHEMA);
   assert.ok(draws.every((c) => !c.task.includes('Idea: Respiration')), 'templated idea never asks for an SVG');
@@ -158,6 +159,34 @@ test('template shapes are drawn in code: no draw calls, redraws rewrite only the
   assert.equal(i2.scene, null);
   assert.ok(deck.overview.recall.includes('Respiration'), 'overview drawn from the map');
   assert.equal(draws.length, 1, 'overview costs no call');
+});
+
+test('a made-up step label fails the round and is sent back to be renamed', async () => {
+  const claude = fakeClaude({ failFirst: false });
+  const orig = claude.call;
+  const machine = structuredClone(SCENES.find((x) => x.shape === 'machine').scene);
+  machine.steps[1].label = 'Sugar Snapping';
+  claude.call = async (req) => {
+    if (req.schema === MAP_SCHEMA) {
+      const map = structuredClone(MAP);
+      map.ideas = [{ ...map.ideas[0], scene: machine }];
+      return map;
+    }
+    if (req.schema === REFILL_SCHEMA) {
+      claude.calls.push(req);
+      const scene = structuredClone(machine);
+      scene.steps[1].label = 'Splitting';
+      return { scene };
+    }
+    return orig(req);
+  };
+  const notes = 'The investment phase, splitting, then the payoff phase.';
+  const deck = await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: notes }]) }, { overview: false });
+  const refills = claude.calls.filter((c) => c.schema === REFILL_SCHEMA);
+  assert.equal(refills.length, 1);
+  assert.ok(refills[0].task.includes('Sugar Snapping'), 'the redraw is told which label to rename');
+  assert.equal(deck.ideas[0].bestRound, 2);
+  assert.ok(deck.ideas[0].recall.includes('Splitting'));
 });
 
 test('templates: false makes the model draw everything', async () => {

@@ -46,6 +46,26 @@ export function normalizeScene(raw, shape) {
   };
 }
 
+// Glue and generic process words any course may use for a step; they never make a label "invented".
+const GENERIC = new Set(('with from into onto over that this then than each their phase stage step process formation production '
+  + 'synthesis regeneration release entry input output yield total overall gain loss transfer reaction splitting start final first second third').split(' '));
+const stem = (w) => w.replace(/(ations?|ions?|ings?|ed|es|s)$/, '').slice(0, 5);
+const stems = (s) => (String(s).toLowerCase().match(/\p{L}{4,}/gu) ?? []).filter((w) => !GENERIC.has(w)).map(stem);
+
+/**
+ * Step labels are what students recall, so each must be the material's own term, not a name the model made up
+ * ("Carbon Stripping" for α-ketoglutarate). A label passes if every word's stem appears in the text or key terms.
+ * `text` is null when the material isn't plain text (PDF, image): nothing to check against.
+ * O(text) per call — fine for notes; the set could be cached per deck if sources get large.
+ */
+export function labelIssues(scene, text, terms = []) {
+  if (!scene || text == null) return [];
+  const known = new Set(stems(`${text} ${terms.join(' ')}`));
+  return scene.steps
+    .filter((st) => stems(st.label).some((w) => !known.has(w)))
+    .map((st) => `the label "${st.label}" is not a term from the material; use the material's own word for this step`);
+}
+
 /**
  * Draw a scene. `issues` lists words that had to be cut to fit, so a redraw can shorten them.
  * @returns {{ svg: string, issues: string[] }}
