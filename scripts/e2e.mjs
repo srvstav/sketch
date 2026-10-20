@@ -20,6 +20,11 @@ const server = createServer(async (req, res) => {
 const base = `http://localhost:${server.address().port}/`;
 
 const svg = (t) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#FBF7EE"/><circle cx="600" cy="400" r="200" fill="#2B6CB0" fill-opacity="0.2" stroke="#1B1A17" stroke-width="6"/><text x="600" y="380" font-size="40" text-anchor="middle" data-recall="true">${t}</text><text x="600" y="460" font-size="28" text-anchor="middle" data-recall="true">Second label</text><script>alert(1)</script></svg>`;
+// A template scene: sketch draws it in code, so the model never writes this idea's SVG.
+const scene = (first) => ({
+  steps: [{ label: first, note: 'Light splits water', handoff: 'ATP + NADPH' }, { label: 'ATP synthase', note: 'Makes ATP', handoff: '' }],
+  start: 'Light', end: 'ATP', center: '', pitfall: { after: -1, text: '' }, hook: { at: 0, text: 'A solar panel stack' },
+});
 let grades = 0;
 // Accepts both request shapes: Claude (output_config + messages) and Gemini (generationConfig + contents).
 const schemaOf = (b) => b.output_config?.format.schema ?? b.generationConfig?.responseJsonSchema ?? b.text.format.schema;
@@ -29,9 +34,10 @@ const partsOf = (b) => b.messages?.[0].content
 function answer(body) {
   const props = Object.keys(schemaOf(body).properties);
   if (props.includes('ideas')) return { title: 'Photosynthesis', subject: 'Biology', ideas: [
-    { id: 'i1', title: 'Light reactions', core: 'c', shape: 'machine', why_shape: 'a factory line', key_terms: ['Thylakoid'], questions: [{ q: 'Where?', answer: 'Thylakoid' }, { q: 'Makes?', answer: 'ATP' }] },
+    { id: 'i1', title: 'Light reactions', core: 'c', shape: 'machine', why_shape: 'a factory line', key_terms: ['Thylakoid'], questions: [{ q: 'Where?', answer: 'Thylakoid' }, { q: 'Makes?', answer: 'ATP' }], scene: scene('Thylakoid') },
     { id: 'i2', title: 'Calvin cycle', core: 'c', shape: 'cycle', why_shape: 'it loops', key_terms: ['Stroma'], questions: [{ q: 'Where?', answer: 'Stroma' }, { q: 'Fixes?', answer: 'CO2' }] },
   ], links: [{ from: 'i1', to: 'i2', label: 'ATP + NADPH' }] };
+  if (props.includes('scene') && !props.includes('ideas')) return { scene: scene('Thylakoid membrane') };
   if (props.includes('svg')) return { svg: svg(/Idea: (.*)/.exec(partsOf(body).at(-1).text)?.[1] ?? 'Overview'), caption: 'A caption.', hook: 'A hook.' };
   if (props.includes('answers')) {
     if (partsOf(body)[0].type !== 'image') throw new Error('judge did not get an image');

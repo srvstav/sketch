@@ -1,9 +1,11 @@
 // The sketch loop: map → draw → check (picture-only quiz) → redraw, per idea, in parallel.
 // Pure orchestration: the model, the SVG cleaner and the rasterizer are all injected.
+// Template shapes are filled in by the map call and drawn by code (scenes.js); a redraw only rewrites their words.
 import {
-  MAP_SCHEMA, DRAW_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA, SHAPES,
-  mapTask, drawTask, redrawTask, overviewTask, judgeTask, gradeTask,
+  MAP_SCHEMA, DRAW_SCHEMA, REFILL_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA, SHAPES,
+  mapTask, drawTask, redrawTask, refillTask, overviewTask, judgeTask, gradeTask,
 } from './prompts.js';
+import { normalizeScene, renderScene, renderOverview } from './scenes.js';
 import { SketchError } from './llm.js';
 import { textIssues } from './svg.js';
 
@@ -14,6 +16,7 @@ export const DEFAULTS = Object.freeze({
   maxRounds: 3, // drawings per idea, including the first
   concurrency: 3,
   overview: true,
+  templates: true, // draw template shapes in code; false = the model writes every SVG
 });
 
 /**
@@ -38,7 +41,7 @@ export async function sketch({ claude, clean, rasterize, layout = async () => []
 
   const ctx = { claude, clean, rasterize, layout, source, signal, emit, o };
   const drawIdeas = () => mapLimit(map.ideas, o.concurrency, (idea) => drawIdea(idea, ctx));
-  const drawOver = () => (o.overview ? drawOverview(map, ctx) : Promise.resolve(null));
+  const drawOver = () => (!o.overview ? Promise.resolve(null) : o.templates ? Promise.resolve(overviewPic(map, ctx)) : drawOverview(map, ctx));
   // One-at-a-time backends draw the overview last instead of alongside the ideas.
   const [ideas, overview] = o.concurrency > 1
     ? await Promise.all([drawIdeas(), drawOver()])
@@ -78,6 +81,7 @@ export function normalizeMap(raw, o = DEFAULTS) {
       why_shape: String(idea.why_shape ?? ''),
       key_terms: (idea.key_terms ?? []).map(String).filter(Boolean).slice(0, 8),
       questions: (idea.questions ?? []).filter((q) => q?.q && q?.answer).slice(0, o.questionsPerIdea),
+      scene: o.templates === false ? null : normalizeScene(idea.scene, SHAPES.includes(idea.shape) ? idea.shape : 'other'),
     };
   });
   const links = (raw.links ?? []).filter((l) => seen.has(l.from) && seen.has(l.to));
@@ -89,13 +93,14 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
   let best = null;
   try {
     emit({ type: 'idea', id: idea.id, status: 'drawing', round: 1 });
-    let pic = await drawClean(claude, clean, source, drawTask(idea), signal);
+    let pic = idea.scene ? scenePic(idea, idea.scene, clean) : await drawClean(claude, clean, source, drawTask(idea), signal);
 
     for (let round = 1; round <= o.maxRounds; round++) {
       emit({ type: 'idea', id: idea.id, status: 'checking', round });
       const grade = await check(idea, pic, { claude, rasterize, source, signal });
       const score = grade.correct / Math.max(1, idea.questions.length);
       const issues = [
+        ...(pic.cut ?? []),
         ...textIssues(pic.texts ?? [], idea.questions),
         ...(await layout(pic.svg).catch(() => [])), // a broken layout check never blocks a picture
       ];
@@ -108,9 +113,11 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
       grade.issues = issues;
 
       emit({ type: 'idea', id: idea.id, status: 'redrawing', round: round + 1 });
-      pic = await drawClean(claude, clean, source, redrawTask(idea, pic, grade, round + 1), signal);
+      pic = pic.scene
+        ? await refill(idea, pic.scene, grade, round + 1, { claude, clean, source, signal })
+        : await drawClean(claude, clean, source, redrawTask(idea, pic, grade, round + 1), signal);
     }
-    const result = { ...idea, svg: best.svg, recall: best.recall, caption: best.caption, hook: best.hook, score: best.score, bestRound: best.round, rounds };
+    const result = { ...idea, svg: best.svg, recall: best.recall, caption: best.caption, hook: best.hook, scene: best.scene ?? null, score: best.score, bestRound: best.round, rounds };
     emit({ type: 'idea', id: idea.id, status: 'done', score: best.score, result });
     return result;
   } catch (err) {
@@ -121,6 +128,26 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
       ? { ...idea, svg: best.svg, recall: best.recall, caption: best.caption, hook: best.hook, score: best.score, bestRound: best.round, rounds, error: err.message }
       : { ...idea, svg: null, recall: [], rounds, score: 0, error: err.message };
   }
+}
+
+/** Draw a template scene in code. `cut` lists words that didn't fit, so a refill can shorten them. */
+function scenePic(idea, scene, clean) {
+  const { svg: raw, issues } = renderScene(idea.shape, idea.title, scene);
+  const { svg, recall, texts } = clean(raw);
+  return { svg, recall, texts, scene, cut: issues, caption: idea.core, hook: scene.hook.text };
+}
+
+/** Redraw a template idea: the model rewrites only the scene's words. Unusable words keep the old scene. */
+async function refill(idea, scene, grade, round, { claude, clean, source, signal }) {
+  const out = await claude.call({ source, task: refillTask(idea, scene, grade, round), schema: REFILL_SCHEMA, effort: 'high', maxTokens: 8000, signal });
+  return scenePic(idea, normalizeScene(out?.scene, idea.shape) ?? scene, clean);
+}
+
+function overviewPic(map, { clean, emit }) {
+  const { svg, recall } = clean(renderOverview(map).svg);
+  const pic = { svg, recall, caption: '', hook: '' };
+  emit({ type: 'overview', status: 'done', result: pic });
+  return pic;
 }
 
 /** Draw, clean; one retry if the SVG was unusable. */

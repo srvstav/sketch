@@ -8,6 +8,8 @@ Turn lecture slides, a chapter or your notes into pictures you can't forget. Eve
    structure: a process becomes a machine, a trade-off a seesaw, an argument a road with a fork. It also writes
    5 exam-style questions per idea.
 2. **Draw.** One SVG per idea, plus an overview map of the whole topic. Key terms are marked for recall practice.
+   Five shapes (machine, cycle, journey, dominoes, building) are drawn by sketch itself from the words the model
+   picks, so labels never collide and a free model draws as well as a paid one. Other shapes are drawn by the model.
 3. **Check.** A second call sees *only the rendered picture* and answers the questions. A grader marks the answers
    against the material. Below 80%, sketch redraws with a list of what was missing (up to 3 rounds) and keeps the best.
 4. **Recall.** Labels go blank and you fill them in. Close answers are checked for meaning. The ones you miss come
@@ -30,8 +32,10 @@ without a key: *Try an example: cellular respiration*.
 ```sh
 npm test                                   # unit tests: loop, SVG cleaner, recall, export, request shape
 node scripts/e2e.mjs out/                  # real browser, stubbed API, screenshots into out/
+node scripts/preview-scenes.js             # every drawn shape (and worst cases) → runs/preview/*.png
 GEMINI_API_KEY=… node scripts/sketch.js notes.pdf --focus "BIO 101 midterm"   # or ANTHROPIC_API_KEY
                                            # real run → runs/<date>-<topic>/ with SVGs, deck.html, scores.json
+                                           # --freeform: the model draws every SVG, for before/after comparisons
 ```
 
 `scores.json` holds the picture-only score per idea and per round. Run the same material before and after a prompt
@@ -44,6 +48,7 @@ recall test.
 index.html, styles.css   the app shell
 src/prompts.js           system prompt, shape library, drawing rules, JSON schemas  ← the part to tune
 src/pipeline.js          map → draw → check → redraw, per idea in parallel (model injected; no DOM)
+src/scenes.js            the five drawn shapes + overview: words in, laid-out SVG out
 src/model.js             picks Claude or Gemini from the key
 src/llm.js               Claude call: cached source, structured output, adaptive thinking, refusal fallback
 src/gemini.js            Gemini call (REST generateContent): JSON schema, thinking level, waits out rate limits

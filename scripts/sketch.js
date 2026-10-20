@@ -1,5 +1,6 @@
 // Run sketch from the terminal — the eval harness. Writes <out>/deck.sketch.json, one SVG per idea, and scores.json.
-// Usage: GEMINI_API_KEY=… (or ANTHROPIC_API_KEY=sk-ant-…) node scripts/sketch.js <file…> [--out dir] [--focus "…"] [--model id] [--rounds n] [--ideas n]
+// Usage: GEMINI_API_KEY=… (or ANTHROPIC_API_KEY=sk-ant-…) node scripts/sketch.js <file…> [--out dir] [--focus "…"] [--model id] [--rounds n] [--ideas n] [--freeform]
+// --freeform: the model writes every SVG (the old way), for before/after comparisons.
 import Anthropic from '@anthropic-ai/sdk';
 import { chromium } from 'playwright';
 import { DOMParser } from 'linkedom';
@@ -12,12 +13,13 @@ import { sketch, DEFAULTS } from '../src/pipeline.js';
 import { cleanSvg } from '../src/svg.js';
 import { deckToJson, deckToHtml, slug } from '../src/export.js';
 import { findLayoutIssues } from '../src/render.js';
+import { MAP_SCHEMA, DRAW_SCHEMA, REFILL_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA } from '../src/prompts.js';
 
 const { values: args, positionals: files } = parseArgs({
   allowPositionals: true,
-  options: { out: { type: 'string' }, focus: { type: 'string', default: '' }, model: { type: 'string' }, rounds: { type: 'string' }, ideas: { type: 'string' } },
+  options: { out: { type: 'string' }, focus: { type: 'string', default: '' }, model: { type: 'string' }, rounds: { type: 'string' }, ideas: { type: 'string' }, freeform: { type: 'boolean', default: false } },
 });
-if (!files.length) { console.error('usage: node scripts/sketch.js <file…> [--out dir] [--focus "…"] [--model id] [--rounds n] [--ideas n]'); process.exit(2); }
+if (!files.length) { console.error('usage: node scripts/sketch.js <file…> [--out dir] [--focus "…"] [--model id] [--rounds n] [--ideas n] [--freeform]'); process.exit(2); }
 const apiKey = process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY;
 if (!apiKey) { console.error('Set GEMINI_API_KEY or ANTHROPIC_API_KEY.'); process.exit(2); }
 const model = modelFor(apiKey, args.model);
@@ -45,6 +47,16 @@ const claude = createModel({
   onUsage: (u) => { usage.input += u.input_tokens ?? 0; usage.cached += u.cache_read_input_tokens ?? 0; usage.written += u.cache_creation_input_tokens ?? 0; usage.output += u.output_tokens ?? 0; },
 });
 
+// Count model calls: the free Gemini tier allows about 20 a day per model, so calls per deck decide who can use sketch.
+const KIND = new Map([[MAP_SCHEMA, 'map'], [DRAW_SCHEMA, 'draw'], [REFILL_SCHEMA, 'refill'], [JUDGE_SCHEMA, 'judge'], [GRADE_SCHEMA, 'grade']]);
+const calls = {};
+const call = claude.call.bind(claude);
+claude.call = (req) => {
+  const kind = KIND.get(req.schema) ?? 'other';
+  calls[kind] = (calls[kind] ?? 0) + 1;
+  return call(req);
+};
+
 const t0 = Date.now();
 const log = (e) => {
   const s = ((Date.now() - t0) / 1000).toFixed(0).padStart(4);
@@ -56,7 +68,7 @@ const log = (e) => {
 try {
   const deck = await sketch(
     { claude, clean: (s) => cleanSvg(s, { DOMParser }), rasterize, layout: async (svg) => { await page.setContent('<body></body>'); return page.evaluate(findLayoutIssues, svg); }, source: sourceBlocks(sources), focus: args.focus, sourceNames: sources.map((s) => s.name), onEvent: log },
-    { maxRounds: Number(args.rounds ?? DEFAULTS.maxRounds), maxIdeas: Number(args.ideas ?? DEFAULTS.maxIdeas) },
+    { maxRounds: Number(args.rounds ?? DEFAULTS.maxRounds), maxIdeas: Number(args.ideas ?? DEFAULTS.maxIdeas), templates: !args.freeform },
   );
   const out = args.out ?? join('runs', `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}-${slug(deck.title)}`);
   await mkdir(out, { recursive: true });
@@ -65,12 +77,12 @@ try {
   for (const i of deck.ideas) if (i.svg) await writeFile(join(out, `${i.n}-${slug(i.title)}.svg`), i.svg);
   if (deck.overview?.svg) await writeFile(join(out, '0-overview.svg'), deck.overview.svg);
   const scores = {
-    model, seconds: Math.round((Date.now() - t0) / 1000), usage,
+    model, templates: !args.freeform, seconds: Math.round((Date.now() - t0) / 1000), usage, calls, totalCalls: Object.values(calls).reduce((a, b) => a + b, 0),
     mean: deck.ideas.reduce((n, i) => n + i.score, 0) / deck.ideas.length,
     ideas: deck.ideas.map((i) => ({ id: i.id, title: i.title, shape: i.shape, score: i.score, rounds: i.rounds.map((r) => r.score), layoutIssues: i.rounds.map((r) => r.issues ?? []), recallLabels: i.recall.length, error: i.error })),
   };
   await writeFile(join(out, 'scores.json'), JSON.stringify(scores, null, 2));
-  console.log(`\nmean picture-only score ${Math.round(scores.mean * 100)}% · ${scores.seconds}s · tokens in ${usage.input} (+${usage.cached} cached, ${usage.written} cache-written) out ${usage.output}\n→ ${out}`);
+  console.log(`\nmean picture-only score ${Math.round(scores.mean * 100)}% · ${scores.totalCalls} model calls ${JSON.stringify(calls)} · ${scores.seconds}s · tokens in ${usage.input} (+${usage.cached} cached, ${usage.written} cache-written) out ${usage.output}\n→ ${out}`);
 } finally {
   await browser.close();
 }

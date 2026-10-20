@@ -1,4 +1,5 @@
 // Prompts and output schemas. The system prompt is byte-stable so it caches across every call in a run.
+import { TEMPLATES } from './scenes.js';
 
 export const SHAPES = [
   'machine', 'journey', 'map', 'seesaw', 'tree', 'building', 'cycle', 'river',
@@ -60,6 +61,42 @@ const QUESTION = {
   additionalProperties: false,
 };
 
+const STR = { type: 'string' };
+
+/** Words for a shape sketch draws itself (see scenes.js). Every field is required so strict schemas accept it. */
+export const SCENE = {
+  type: 'object',
+  properties: {
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { label: STR, note: STR, handoff: STR },
+        required: ['label', 'note', 'handoff'],
+        additionalProperties: false,
+      },
+    },
+    start: STR,
+    end: STR,
+    center: STR,
+    pitfall: { type: 'object', properties: { after: { type: 'integer' }, text: STR }, required: ['after', 'text'], additionalProperties: false },
+    hook: { type: 'object', properties: { at: { type: 'integer' }, text: STR }, required: ['at', 'text'], additionalProperties: false },
+  },
+  required: ['steps', 'start', 'end', 'center', 'pitfall', 'hook'],
+  additionalProperties: false,
+};
+
+export const SCENE_GUIDE = `Scene. sketch draws these shapes itself from your words: ${TEMPLATES.join(', ')}. For any other shape, return an empty steps list, empty strings, and -1 for pitfall.after and hook.at.
+- steps: the parts in order, 3 to 6 (cycle: up to 7). label = the key term, at most 4 words, a real term from the material. note = what happens there or why it matters, at most 12 words, concrete (numbers, places, names). handoff = what passes from this step to the next, at most 4 words; empty for the last step (except in a cycle, where the last step hands back to the first).
+- machine: stations on a production line. start = the raw input, end = the final product.
+- cycle: stops around a wheel that returns to the first. center = what the cycle is for or where it happens. start = what enters, end = what leaves.
+- journey: stops on a road through a method, proof or argument. pitfall = the step after which students most often go wrong (after = that step's index from 0) and the mistake in one line. start = where you begin, end = what you reach.
+- dominoes: causes, each knocking over the next. start = the first push, end = the final effect.
+- building: floors from the foundation (first step) up; each rests on the one below. handoff = what this floor gives the one above. end = what sits on top (the roof). start = what the whole thing stands on, or empty.
+- hook: one vivid, odd, concrete image tied to the hardest fact, at most 14 words. at = the index of the step it belongs to.
+- Every answer to the questions must be readable from the scene's words, each placed on the step it belongs to. Never put a question or an answer list in it.
+- Unused text fields are empty strings; pitfall.after is -1 when there is no pitfall.`;
+
 export const MAP_SCHEMA = {
   type: 'object',
   properties: {
@@ -77,8 +114,9 @@ export const MAP_SCHEMA = {
           why_shape: { type: 'string', description: 'One line: why this shape fits this idea.' },
           key_terms: { type: 'array', items: { type: 'string' } },
           questions: { type: 'array', items: QUESTION },
+          scene: SCENE,
         },
-        required: ['id', 'title', 'core', 'shape', 'why_shape', 'key_terms', 'questions'],
+        required: ['id', 'title', 'core', 'shape', 'why_shape', 'key_terms', 'questions', 'scene'],
         additionalProperties: false,
       },
     },
@@ -97,6 +135,13 @@ export const MAP_SCHEMA = {
     },
   },
   required: ['title', 'subject', 'ideas', 'links'],
+  additionalProperties: false,
+};
+
+export const REFILL_SCHEMA = {
+  type: 'object',
+  properties: { scene: SCENE },
+  required: ['scene'],
   additionalProperties: false,
 };
 
@@ -171,8 +216,11 @@ export function mapTask({ focus, maxIdeas, questionsPerIdea }) {
 3. List 3 to 8 key terms per idea: the words a student must be able to recall.
 4. Write exactly ${questionsPerIdea} exam-style questions per idea with short answers from the material. Mix recall ("what is…"), structure ("what comes after…", "what causes…") and one that needs understanding ("why…"). Each must be answerable from a good picture of that idea alone.
 5. List links between ideas (from id, to id, short label) for an overview map.
+6. Fill the scene for each idea.
 
-Use short ids like "i1", "i2".`;
+Use short ids like "i1", "i2".
+
+${SCENE_GUIDE}`;
 }
 
 export function drawTask(idea) {
@@ -193,13 +241,14 @@ Think about the metaphor first: what is the concrete object or scene, and which 
 ${DRAWING_RULES}`;
 }
 
+const missList = (idea, grade) => [
+  ...grade.results.map((r, i) => (r.correct ? null : `- Q${i + 1} "${idea.questions[i].q}": ${r.note}`)),
+  ...(grade.issues ?? []).map((i) => `- Layout: ${i}`),
+]
+  .filter(Boolean)
+  .join('\n');
+
 export function redrawTask(idea, previous, grade, round) {
-  const misses = [
-    ...grade.results.map((r, i) => (r.correct ? null : `- Q${i + 1} "${idea.questions[i].q}": ${r.note}`)),
-    ...(grade.issues ?? []).map((i) => `- Layout: ${i}`),
-  ]
-    .filter(Boolean)
-    .join('\n');
   return `Round ${round}. Your last picture had problems: a reader who saw only the picture could not answer some questions, or labels collided. Fix them. Keep the metaphor and everything that works; fix what's missing. Don't cram in paragraphs: add labels, parts of the metaphor, or arrows.
 
 Idea: ${idea.title}
@@ -207,7 +256,7 @@ Shape: ${idea.shape}
 Key terms (mark with data-recall): ${idea.key_terms.join('; ')}
 
 Missed:
-${misses}
+${missList(idea, grade)}
 
 Suggested fix: ${grade.fix}
 
@@ -215,6 +264,22 @@ Your last picture:
 ${previous.svg}
 
 ${DRAWING_RULES}`;
+}
+
+export function refillTask(idea, scene, grade, round) {
+  return `Round ${round}. sketch drew the idea "${idea.title}" as a ${idea.shape} from the scene below. A reader who saw only the picture missed some questions, or some words didn't fit. Rewrite the scene to fix it. Keep what works. Put each missing fact on the step it belongs to (label, note or handoff). Stay within the word limits: shorter words fit better.
+
+Key terms: ${idea.key_terms.join('; ')}
+
+Missed:
+${missList(idea, grade)}
+
+Suggested fix: ${grade.fix}
+
+Current scene:
+${JSON.stringify(scene)}
+
+${SCENE_GUIDE}`;
 }
 
 export function overviewTask(map) {

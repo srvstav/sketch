@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DOMParser } from 'linkedom';
 import { sketch, normalizeMap, mapLimit } from '../src/pipeline.js';
-import { MAP_SCHEMA, DRAW_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA } from '../src/prompts.js';
+import { MAP_SCHEMA, DRAW_SCHEMA, REFILL_SCHEMA, JUDGE_SCHEMA, GRADE_SCHEMA } from '../src/prompts.js';
+import { SCENES } from './fixtures/scenes.js';
 import { cleanSvg } from '../src/svg.js';
 import { sourceBlocks, createClaude, SketchError } from '../src/llm.js';
 
@@ -122,6 +123,50 @@ test('one failing idea does not sink the deck; auth errors do', async () => {
     return orig(req);
   };
   await assert.rejects(sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'x' }]) }), /bad key/);
+});
+
+test('template shapes are drawn in code: no draw calls, redraws rewrite only the words', async () => {
+  const claude = fakeClaude();
+  const orig = claude.call;
+  const machine = SCENES.find((x) => x.shape === 'machine').scene;
+  claude.call = async (req) => {
+    if (req.schema === MAP_SCHEMA) {
+      const map = structuredClone(MAP);
+      map.ideas[0].scene = machine; // i1 machine: templated
+      map.ideas[1].shape = 'scene'; // i2 free drawing
+      return map;
+    }
+    if (req.schema === REFILL_SCHEMA) {
+      claude.calls.push(req);
+      const scene = structuredClone(machine);
+      scene.steps[0].label = 'Refilled';
+      return { scene };
+    }
+    return orig(req);
+  };
+  const deck = await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'x' }]) });
+  const [i1, i2] = deck.ideas;
+  const draws = claude.calls.filter((c) => c.schema === DRAW_SCHEMA);
+  assert.ok(draws.every((c) => !c.task.includes('Idea: Respiration')), 'templated idea never asks for an SVG');
+  assert.ok(draws.some((c) => c.task.includes('Idea: Division')), 'other shapes still draw freely');
+  assert.equal(claude.calls.filter((c) => c.schema === REFILL_SCHEMA).length, 1, 'failed check → one word refill');
+  assert.ok(claude.calls.find((c) => c.schema === REFILL_SCHEMA).task.includes('missing arrow'));
+  assert.equal(i1.bestRound, 2);
+  assert.ok(i1.recall.includes('Refilled'));
+  assert.equal(i1.scene.steps[0].label, 'Refilled');
+  assert.equal(i1.hook, machine.hook.text);
+  assert.equal(i2.scene, null);
+  assert.ok(deck.overview.recall.includes('Respiration'), 'overview drawn from the map');
+  assert.equal(draws.length, 1, 'overview costs no call');
+});
+
+test('templates: false makes the model draw everything', async () => {
+  const claude = fakeClaude({ failFirst: false });
+  const orig = claude.call;
+  claude.call = async (req) => (req.schema === MAP_SCHEMA ? { ...structuredClone(MAP), ideas: MAP.ideas.map((i) => ({ ...i, scene: SCENES[0].scene })) } : orig(req));
+  const deck = await sketch({ claude, clean, rasterize, source: sourceBlocks([{ kind: 'text', name: 'n', data: 'x' }]) }, { templates: false });
+  assert.equal(claude.calls.filter((c) => c.schema === DRAW_SCHEMA).length, 3, 'two ideas + overview');
+  assert.ok(deck.ideas.every((i) => i.scene === null));
 });
 
 test('normalizeMap clamps ideas, fixes shapes and duplicate ids', () => {
