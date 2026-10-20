@@ -86,3 +86,9 @@ test('provider and model selection follow the key', () => {
   assert.equal(retryDelay(null, 2), 8);
   assert.deepEqual(toParts([{ type: 'image', source: { media_type: 'image/png', data: 'AA' } }]), [{ inlineData: { mimeType: 'image/png', data: 'AA' } }]);
 });
+
+test('default sleep is wired (stop during a wait aborts cleanly)', async () => {
+  const ctl = new AbortController();
+  const g = createGemini({ apiKey: 'AQ.k', fetch: async () => { ctl.abort(); return err(503, 'overloaded'); } });
+  await assert.rejects(g.call({ task: 't', schema: {}, signal: ctl.signal }), /Stopped/);
+});

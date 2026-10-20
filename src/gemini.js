@@ -2,6 +2,7 @@
 // Raw REST (generateContent); request shape verified against the live API on 2026-10-20.
 import { SYSTEM } from './prompts.js';
 import { SketchError } from './llm.js';
+import { abortableSleep } from './wait.js';
 
 export const GEMINI_DEFAULT_MODEL = 'gemini-3.8-flash'; // free tier; Pro models had no free quota when tested
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';

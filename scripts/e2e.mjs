@@ -69,6 +69,9 @@ await page.route('https://api.anthropic.com/**', async (route) => {
   route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body: sse(answer(body)) });
 });
 
+await page.exposeFunction('__toast', (t) => console.log(`   toast: ${t}`));
+await page.addInitScript(() => new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.classList?.contains('toast') && window.__toast(n.textContent)))).observe(document, { childList: true, subtree: true }));
+await page.reload();
 const step = async (name, fn) => { await fn(); await page.screenshot({ path: join(out, `${name}.png`) }); console.log('✓', name); };
 
 await step('1-home', () => page.goto(base, { waitUntil: 'networkidle' }));
@@ -120,7 +123,7 @@ await page.locator('input[name=key]').fill('AQ.e2e-gemini');
 if (!(await page.locator('select[name=model]').inputValue()).startsWith('gemini')) problems.push('model list did not switch to Gemini');
 await page.getByRole('button', { name: 'Save' }).click();
 await page.getByLabel('Paste notes').fill('Gemini run: photosynthesis notes.');
-await step('11-gemini-deck', async () => { await page.getByRole('button', { name: 'Make pictures' }).click(); await page.locator('.deck').waitFor({ timeout: 30000 }); });
+await step('11-gemini-deck', async () => { await page.getByRole('button', { name: 'Make pictures' }).click(); await page.locator('.deck').waitFor({ timeout: 30000 }).catch(async () => problems.push(`gemini run did not finish; toasts: ${await page.locator('.toast').allTextContents()} | page: ${(await page.locator('main').innerText()).slice(0, 300)}`)); });
 if (!gemini.length) problems.push('no Gemini calls');
 if (gemini.some((g) => g.headers['x-goog-api-key'] !== 'AQ.e2e-gemini')) problems.push('Gemini key header missing');
 console.log(`gemini calls: ${gemini.length}`);
@@ -140,7 +143,7 @@ await page.locator('input[name=key]').fill('sk-proj-e2e');
 if ((await page.locator('#provider').textContent()) !== 'Detected: OpenAI') problems.push('provider badge wrong');
 await page.getByRole('button', { name: 'Save' }).click();
 await page.getByLabel('Paste notes').fill('OpenAI run: photosynthesis notes.');
-await step('12-openai-deck', async () => { await page.getByRole('button', { name: 'Make pictures' }).click(); await page.locator('.deck').waitFor({ timeout: 30000 }); });
+await step('12-openai-deck', async () => { await page.getByRole('button', { name: 'Make pictures' }).click(); await page.locator('.deck').waitFor({ timeout: 30000 }).catch(async (e) => { problems.push(`openai run did not finish; toasts: ${await page.locator('.toast').allTextContents()}`); }); });
 if (!openai.length || openai.some((o) => o.headers.authorization !== 'Bearer sk-proj-e2e')) problems.push('OpenAI calls missing or wrong auth');
 console.log(`openai calls: ${openai.length}`);
 

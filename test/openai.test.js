@@ -64,3 +64,9 @@ test('keys route to the right provider and model', () => {
   assert.equal(modelFor('sk-proj-abc', 'gpt-6-luna'), 'gpt-6-luna');
   assert.deepEqual(toInput([{ type: 'text', text: 'x' }]), [{ type: 'input_text', text: 'x' }]);
 });
+
+test('default sleep is wired (stop during a wait aborts cleanly)', async () => {
+  const ctl = new AbortController();
+  const o = createOpenAI({ apiKey: 'sk-x', fetch: async () => { ctl.abort(); return err(503, 'overloaded'); } });
+  await assert.rejects(o.call({ task: 't', schema: {}, signal: ctl.signal }), /Stopped/);
+});
