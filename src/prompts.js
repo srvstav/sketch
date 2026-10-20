@@ -95,7 +95,7 @@ export const SCENE_GUIDE = `Scene. sketch draws these shapes itself from your wo
 - dominoes: causes, each knocking over the next. start = the first push, end = the final effect.
 - building: floors from the foundation (first step) up; each rests on the one below. handoff = what this floor gives the one above. end = what sits on top (the roof). start = what the whole thing stands on, or empty.
 - icon: the picture drawn on this step, from this list (name, then what it can stand for): ${ICON_GUIDE}. Pick the one a student would link to the step at a glance: scissors for a split, battery for ATP made, recycle for something regenerated. Use each icon at most once per scene; "none" if nothing fits.
-- stat: the one number or short formula on this step that a test would ask, at most 10 characters ("+2 ATP", "6C → 2×3C", "1914", "x² + 1"). Empty when the step has no number. Never repeat the label.
+- stat: the one number or short formula on this step that a test would ask, at most 10 characters ("+2 ATP", "6C → 2×3C", "1914", "x² + 1"). It must contain a digit or a symbol like = or →; a word alone is not a stat. Empty when the step has no number. Never repeat the label, start or end.
 - hook: one vivid, odd, concrete image tied to the hardest fact, at most 14 words. at = the index of the step it belongs to.
 - Every answer to the questions must be readable from the scene's words, each placed on the step it belongs to. Never put a question or an answer list in it.
 - Unused text fields are empty strings; pitfall.after is -1 when there is no pitfall.`;

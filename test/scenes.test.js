@@ -66,7 +66,12 @@ test('a word too long to fit is reported so a redraw can shorten it', () => {
 test('icons and numbers: known icons are drawn, unknown ones dropped, numbers become recall labels', () => {
   const scene = structuredClone(SCENES[0].scene);
   scene.steps[1].icon = 'unicorn';
+  scene.steps[2].stat = 'Gradient';
+  scene.end = '6C → 2×3C';
   const n = normalizeScene(scene, 'machine');
+  assert.equal(n.steps[2].stat, '', 'a word is not a number');
+  assert.equal(n.steps[1].stat, '', 'repeats the end');
+  assert.equal(n.steps[0].stat, '−2 ATP');
   assert.equal(n.steps[0].icon, 'coin');
   assert.equal(n.steps[1].icon, '');
   const { svg, recall } = clean(renderScene('machine', 'T', n).svg);

@@ -30,6 +30,9 @@ export function normalizeScene(raw, shape) {
     .filter((s) => s.label)
     .slice(0, MAX_STEPS[shape] ?? 6);
   if (steps.length < 2) return null;
+  // A badge is for a number or formula; words, and repeats of text already drawn, are dropped.
+  const shown = new Set([raw.start, raw.end, raw.center].map((v) => str(v, LIMITS.edge).toLowerCase()));
+  for (const st of steps) if (!/[\p{N}=×÷→±%]/u.test(st.stat) || shown.has(st.stat.toLowerCase()) || st.stat.toLowerCase() === st.label.toLowerCase()) st.stat = '';
   const idx = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : -1);
   const pitText = str(raw.pitfall?.text, LIMITS.hook);
   const hookText = str(raw.hook?.text, LIMITS.hook);
@@ -131,7 +134,7 @@ const DRAW = {
   /** Stops around a wheel; handoffs ride the rim, the hub says what the cycle is for. */
   cycle(pen, s) {
     const statted = s.steps.some((st) => st.stat);
-    const N = s.steps.length, C = { x: 600, y: 445 }, RX = 300, RY = 215, BW = 200, BH = statted ? 84 : 72;
+    const N = s.steps.length, C = { x: 600, y: 445 }, RX = 300, RY = 215, BW = 200, BH = statted ? 88 : 72;
     const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
     const at = (a, k = 0) => ({ x: C.x + (RX - k) * Math.cos(a), y: C.y + (RY - k) * Math.sin(a) });
     // Walk along the rim until it leaves the badge (plus air for the arrowhead). O(steps) per badge.
@@ -174,7 +177,7 @@ const DRAW = {
       }
       mid.push(`<rect x="${r1(p.x - BW / 2)}" y="${r1(p.y - BH / 2)}" width="${BW}" height="${BH}" rx="${BH / 2}" fill="${PAPER}"/>`);
       mid.push(`<rect x="${r1(p.x - BW / 2)}" y="${r1(p.y - BH / 2)}" width="${BW}" height="${BH}" rx="${BH / 2}" fill="${BLUE}" fill-opacity="0.14" stroke="${BLUE}" stroke-width="3"/>`);
-      front.push(pen.text(p.x, p.y - (st.stat ? 7 : 0), st.label, { w: BW - 24, size: 21, min: 13, lines: 2, weight: 700, recall: true }));
+      front.push(pen.text(p.x, p.y - (st.stat ? 10 : 0), st.label, { w: BW - 24, size: 21, min: 13, lines: 2, weight: 700, recall: true }));
       if (icons[i]) mid.push(iconBadge(st.icon, icons[i].x, icons[i].y, 24, BLUE));
       if (st.stat) front.push(pen.stat(p.x, p.y + BH / 2, st.stat, { w: BW }));
       const c = Math.cos(a);
@@ -295,7 +298,7 @@ const DRAW = {
     const N = s.steps.length, L = 320, Rx = 880, top = 200, bottom = 660, fh = (bottom - top) / N;
     const back = [], mid = [], front = [];
     const fy = (i) => bottom - (i + 1) * fh;
-    const statted = s.steps.some((st) => st.stat), noteW = statted ? 176 : 272;
+    const statted = s.steps.some((st) => st.stat), noteW = statted ? 160 : 272;
     mid.push(`<polygon points="290,${top} 600,118 910,${top}" fill="${PAPER}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><polygon points="290,${top} 600,118 910,${top}" fill="${RED}" fill-opacity="0.15"/>`);
     if (s.end) front.push(pen.text(600, 176, s.end, { w: 300, size: 19, min: 12, lines: 2, weight: 700, recall: true }));
     s.steps.forEach((st, i) => {
