@@ -51,7 +51,8 @@ export function cleanSvg(raw, { DOMParser }) {
     .filter((t) => t.getAttribute('data-recall') === 'true')
     .map((t) => t.textContent.trim())
     .filter(Boolean);
-  return { svg: root.outerHTML, recall };
+  const texts = [...root.getElementsByTagName('text')].map((t) => t.textContent.trim()).filter(Boolean);
+  return { svg: root.outerHTML, recall, texts };
 }
 
 function scrub(el) {
@@ -94,3 +95,28 @@ export function blankOut(svg, hide, { DOMParser }) {
 }
 
 export const blankMark = (n) => CIRCLED[n] ?? `(${n + 1})`;
+
+/**
+ * Text that games the picture-only quiz: numbered lists, or labels that copy a quiz question.
+ * Pure string work, so it runs anywhere.
+ * @param {string[]} texts  every <text> content in the picture
+ * @param {{ q: string }[]} questions
+ * @returns {string[]} problems, empty if none
+ */
+export function textIssues(texts, questions = []) {
+  const issues = [];
+  // Count list markers across labels and inside one label (tspans join without separators).
+  const listed = texts.flatMap((t) => t.match(/(?:^|[^\d])\d{1,2}[.)]\s+\S|(?:^|\s)[•–]\s+\S/g) ?? []);
+  if (listed.length >= 3) issues.push(`the picture contains a written list (${listed.length} items); show each fact on the metaphor instead`);
+  const words = (s) => new Set(String(s).toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? []);
+  for (const q of questions) {
+    const qw = words(q.q);
+    if (qw.size < 3) continue;
+    // A single label carrying most of a question's words is the question pasted in.
+    if (texts.some((t) => { const tw = words(t); let hit = 0; for (const w of qw) if (tw.has(w)) hit++; return hit / qw.size >= 0.7; })) {
+      issues.push(`a label repeats the quiz question "${q.q}"`);
+    }
+  }
+  if (/answer|exam q/i.test(texts.join(' '))) issues.push('the picture labels something as answers to the quiz');
+  return issues;
+}

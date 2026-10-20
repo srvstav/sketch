@@ -49,3 +49,12 @@ test('blankOut hides chosen labels with numbered marks', () => {
   assert.match(out, /①/);
   assert.match(out, /②/);
 });
+
+test('textIssues flags answer lists and pasted questions, not normal labels', async () => {
+  const { textIssues } = await import('../src/svg.js');
+  const qs = [{ q: 'Where in the cell does glycolysis happen?' }];
+  assert.equal(textIssues(['Answering Exam Qs:', '1. Location: Cytoplasm', '2. ATP Gain: Net 2 ATP', '3. Glucose splits'], qs).length, 2);
+  assert.equal(textIssues(['Key facts 1. Cytoplasm2. Net 2 ATP3. Pyruvate'], qs).length, 1, 'list inside one label');
+  assert.match(textIssues(['Where in the cell does glycolysis happen?'], qs)[0], /repeats the quiz question/);
+  assert.deepEqual(textIssues(['Cytoplasm', 'Glucose', 'Net 2 ATP', 'snip! 6 → 3 + 3'], qs), []);
+});

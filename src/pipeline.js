@@ -5,6 +5,7 @@ import {
   mapTask, drawTask, redrawTask, overviewTask, judgeTask, gradeTask,
 } from './prompts.js';
 import { SketchError } from './llm.js';
+import { textIssues } from './svg.js';
 
 export const DEFAULTS = Object.freeze({
   maxIdeas: 6,
@@ -94,7 +95,10 @@ async function drawIdea(idea, { claude, clean, rasterize, layout, source, signal
       emit({ type: 'idea', id: idea.id, status: 'checking', round });
       const grade = await check(idea, pic, { claude, rasterize, source, signal });
       const score = grade.correct / Math.max(1, idea.questions.length);
-      const issues = await layout(pic.svg).catch(() => []); // a broken layout check never blocks a picture
+      const issues = [
+        ...textIssues(pic.texts ?? [], idea.questions),
+        ...(await layout(pic.svg).catch(() => [])), // a broken layout check never blocks a picture
+      ];
       rounds.push({ round, score, issues, misses: grade.results.map((r, i) => (r.correct ? null : { q: idea.questions[i]?.q, note: r.note })).filter(Boolean), fix: grade.fix });
       // Best = highest quiz score; ties go to the cleaner layout.
       if (!best || score > best.score || (score === best.score && issues.length < best.issues.length)) best = { ...pic, score, round, issues };
@@ -131,8 +135,8 @@ async function drawClean(claude, clean, source, task, signal) {
       signal,
     });
     try {
-      const { svg, recall } = clean(out.svg);
-      return { svg, recall, caption: String(out.caption ?? ''), hook: String(out.hook ?? '') };
+      const { svg, recall, texts } = clean(out.svg);
+      return { svg, recall, texts, caption: String(out.caption ?? ''), hook: String(out.hook ?? '') };
     } catch (err) {
       lastErr = err;
     }

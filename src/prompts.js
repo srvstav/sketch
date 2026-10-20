@@ -33,7 +33,7 @@ What makes a picture stick:
 - One vivid hook: a single odd, concrete, slightly funny or exaggerated detail attached to the hardest fact. Weird is memorable.
 - Direction means something: arrows and flow follow cause, time or movement.
 - Size and colour mean something: bigger = more important or more of it; a colour = one category, used consistently.
-- No paragraphs inside the picture. At most one short sentence anywhere.
+- No paragraphs inside the picture. At most one short sentence anywhere. No numbered or bulleted lists, no emoji.
 
 Accuracy beats beauty. Never add facts that are not in the material. If the material is ambiguous, follow the material.
 
@@ -183,8 +183,10 @@ Core: ${idea.core}
 Shape: ${idea.shape} (${idea.why_shape})
 Key terms to place and mark with data-recall: ${idea.key_terms.join('; ')}
 
-A student will later be asked these questions with only your picture in front of them, so every answer must be visible in it:
-${idea.questions.map((q, i) => `${i + 1}. ${q.q}`).join('\n')}
+These facts must be readable from the picture, each one placed on the part of the metaphor it belongs to:
+${idea.questions.map((q) => `- ${q.answer}`).join('\n')}
+
+Never write a list of facts, questions or answers, a legend, a key, or a "remember" box. A fact that is only written in a list, not shown by the metaphor, doesn't count.
 
 Think about the metaphor first: what is the concrete object or scene, and which part of it is each term? Then draw.
 
